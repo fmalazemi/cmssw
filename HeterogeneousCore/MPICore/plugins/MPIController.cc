@@ -90,7 +90,6 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-	EDM_MPI_build_types();
 
 }
 
@@ -107,6 +106,8 @@ MPIController::~MPIController() {
 //
 
 std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::ParameterSet const& iConfig) {
+
+	EDM_MPI_build_types();
         edm::Service<MPIService> service;
         service->required();
         std::unique_ptr<MPICommunicator> com = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
@@ -116,13 +117,15 @@ std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::Para
 
 	EDM_MPI_Empty_t buffer; 
 	int x = 77;
-	//FIXME Wrong type error when execute  
-	//MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getCommunicator()); 
-	MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_Connect, com->getCommunicator()); 
-	x = 22; 
+	std::cout<<"We are here\n";
+	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getCommunicator()); 
+
+
+//	MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_Connect, com->getCommunicator()); 
         MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_ProcessEvent, com->getCommunicator()); 
 
         std::cout<<"Controller is UP and Connected\n";
+ 
         return com;
 }
 

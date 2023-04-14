@@ -95,12 +95,10 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   // wait for a client to connect
   MPI_Status status;
   EDM_MPI_Empty_t buffer;
-  int x = 0;
-  // FIXME Wrong type error when executed.  
-  //MPI_Recv(&buffer, 1, EDM_MPI_Empty_t, MPI_ANY_SOURCE, EDM_MPI_Connect, comm_, &status);
-  MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, EDM_MPI_Connect, comm_, &status);
+  std::cout<<"WE ARE HERE\n"; 
+  MPI_Recv(&buffer, 1, EDM_MPI_Empty, MPI_ANY_SOURCE, EDM_MPI_Connect, comm_, &status);
   edm::LogAbsolute("MPI") << "connected from " << status.MPI_SOURCE;
-  std::cout<<"MPI CONNECTED x = "<<x<<" \n";
+  std::cout<<"MPI CONNECTED x =  \n";
   /* FIXME move MPIRecv
   // receive the branch descriptions
   MPI_Message message;
@@ -255,10 +253,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
 
 
-      int x = -1; 
-      MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, comm_, MPI_STATUS_IGNORE);
-      std::cout<<"We received "<<x<<"\n"; 
-       exit(0); 
+      //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, comm_, MPI_STATUS_IGNORE);
       // receive the EventAuxiliary
       auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
       //auto [status, stream] = link.receiveEvent(event, message);
@@ -375,7 +370,7 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
   edm::Event event(eventPrincipal, moduleDescription(), nullptr);
   event.setProducer(this, nullptr);
   event.emplace(token_, &communicator_.value(), events_.front().stream, events_.front().source);
-  //commit_(event);
+  commit_(event);
 
   /* FIXME move MPIRecv ?
   for (auto& product : event.eventProducts) {

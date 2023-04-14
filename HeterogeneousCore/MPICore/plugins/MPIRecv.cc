@@ -109,6 +109,7 @@ MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
 
 
   //************* MPI Begin *****************
+	std::cout<<"MPI Recv is up\n";
   //************* MPI END ******************
 	
 }
@@ -154,7 +155,7 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
  
   MPI_Status status;
   int dummyInt; 
-  MPI_Recv(&dummyInt, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, communicator->getCommunicator(), MPI_STATUS_IGNORE);
+  MPI_Recv(&dummyInt, 1, MPI_INT, MPI_ANY_SOURCE, 432, communicator->getCommunicator(), MPI_STATUS_IGNORE);
   std::cout<<"___Received Data = "<<dummyInt<<std::endl;
 
   std::cout<<"*********************  RECV: Receiver got the message:\n >>>>>>>>>>>>>>>>>>>>>>>>> \n";

@@ -169,7 +169,7 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //****************** MPI Begin *****************
   const MPICommunicator* communicator = iEvent.get(communicatorToken_).token;   
   int dummyInt=13;  
-  MPI_Send(&dummyInt, 1, MPI_INT, 0, 0, communicator->getCommunicator()); 
+  MPI_Send(&dummyInt, 1, MPI_INT, 0, 432, communicator->getCommunicator()); 
   std::cout<<"--------------  SENDER: Sender sent the dummy integer \"13\" \n"; 
   //****************** MPI END ******************
 
