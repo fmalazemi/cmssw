@@ -16,7 +16,7 @@ public:
     
   void publish_and_listen();
   void connect();
-  void splitCommunicator(int); 
+  void splitCommunicator(); 
   
 MPI_Comm getCommunicator() const ; 
 MPI_Comm getControlCommunicator() const; 

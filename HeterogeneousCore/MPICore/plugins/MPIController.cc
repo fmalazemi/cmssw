@@ -107,19 +107,7 @@ std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::Para
         std::unique_ptr<MPICommunicator> com = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
 
         com->connect();
-        com->splitCommunicator(1); 	
-int rank ;
-   MPI_Comm_rank(com->getCommunicator(), &rank);
-   printf("Rank is %d\n", rank);
-    MPI_Comm_rank(com->getControlCommunicator(), &rank);
-   printf("Control Rank is %d\n", rank);
-   int size; 
-   MPI_Comm_size(MPI_COMM_WORLD, &size); 
-   printf("MPI_COMM_WORLd size = %d", size); 
-   MPI_Comm_size(com->getCommunicator(), &size);
-   printf("com->getCommunicator() size = %d", size);
-   MPI_Comm_size(com->getControlCommunicator(), &size);
-   printf("com->getControlCommunicator() size = %d", size);
+        com->splitCommunicator(); 	
 	EDM_MPI_Empty_t buffer; 
 	std::cout<<"We are here\n";
 	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getControlCommunicator()); 

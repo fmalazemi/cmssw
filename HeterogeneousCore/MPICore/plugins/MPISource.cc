@@ -83,7 +83,7 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   service->required();
   communicator_.emplace("mpi_server"); //config.getUntrackedParameter<std::string>("service"));
   communicator_->publish_and_listen();
-  communicator_->splitCommunicator(0); 
+  communicator_->splitCommunicator(); 
   edm::LogAbsolute("MPI") << "A connection to the MPI server at port " << port_<<" established";
   // FIXME move into the MPIService ?
   // make sure the EDM MPI types are available

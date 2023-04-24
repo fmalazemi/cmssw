@@ -52,12 +52,12 @@ void MPICommunicator::publish_and_listen(){
        isDone = true; 
 }
 
-void MPICommunicator::splitCommunicator(int i){
+void MPICommunicator::splitCommunicator(){
 	//Key ties are broken according to original rank
 	//color 0 for control Communicator	
-	MPI_Comm_split(communicator_, 0, i, &controlCommunicator_);
+	MPI_Comm_split(communicator_, 0, 0, &controlCommunicator_);
 	//color 1 for data communicator
-	MPI_Comm_split(communicator_, 1, i, &dataCommunicator_); 
+	MPI_Comm_split(communicator_, 1, 0, &dataCommunicator_); 
 
 }
 
