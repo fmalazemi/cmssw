@@ -16,28 +16,21 @@
 //
 //
 
-// system include files
 #include <memory>
+#include<iostream> 
+#include <string> 
 
-// user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
-
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
-
-//
-// class declaration
-//
-
-#include<iostream> 
-#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
-#include <string> 
+#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
+
+#include "api.h"
 #include "messages.h"
 
 
@@ -56,14 +49,15 @@ private:
   void produce(edm::Event&, const edm::EventSetup&) override;
   void endStream() override;
 
-  //void beginRun(edm::Run const&, edm::EventSetup const&) override;
-  //void endRun(edm::Run const&, edm::EventSetup const&) override;
-  //void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-  //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  void beginRun(edm::Run const&, edm::EventSetup const&) override;
+  void endRun(edm::Run const&, edm::EventSetup const&) override;
+  void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
+  edm::StreamID sid_ = edm::StreamID::invalidStreamID(); 
   std::optional<MPICommunicator> communicator_; 
-
+  MPISender link; 
   edm::EDPutTokenT<MPIToken> token_; 
 };
 
@@ -90,7 +84,7 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-
+  link = MPISender(c->getControlCommunicator(), 0); 
 }
 
 MPIController::~MPIController() {
@@ -113,17 +107,27 @@ std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::Para
         std::unique_ptr<MPICommunicator> com = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
 
         com->connect();
-	
-
+        com->splitCommunicator(1); 	
+int rank ;
+   MPI_Comm_rank(com->getCommunicator(), &rank);
+   printf("Rank is %d\n", rank);
+    MPI_Comm_rank(com->getControlCommunicator(), &rank);
+   printf("Control Rank is %d\n", rank);
+   int size; 
+   MPI_Comm_size(MPI_COMM_WORLD, &size); 
+   printf("MPI_COMM_WORLd size = %d", size); 
+   MPI_Comm_size(com->getCommunicator(), &size);
+   printf("com->getCommunicator() size = %d", size);
+   MPI_Comm_size(com->getControlCommunicator(), &size);
+   printf("com->getControlCommunicator() size = %d", size);
 	EDM_MPI_Empty_t buffer; 
-	int x = 77;
 	std::cout<<"We are here\n";
-	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getCommunicator()); 
+	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getControlCommunicator()); 
 
-
-//	MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_Connect, com->getCommunicator()); 
-        MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_ProcessEvent, com->getCommunicator()); 
-
+        /*
+	int x = 77;
+	MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_Connect, com->getCommunicator()); 
+	*/ 
         std::cout<<"Controller is UP and Connected\n";
  
         return com;
@@ -153,50 +157,72 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
  // MPICommunicator const * com_ptr = (globalCache()->com).get();  // &communicator_.value(); 
+ link.sendEvent(sid_, iEvent.eventAuxiliary());
   iEvent.emplace(token_, globalCache()); 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
-void MPIController::beginStream(edm::StreamID) {
+void MPIController::beginStream(edm::StreamID sid) {
   // please remove this method if not needed
+  sid_ = sid;
+  link.sendConnect(sid_);
+  link.sendBeginStream(sid_);
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
 void MPIController::endStream() {
-  // please remove this method if not needed
+  // signal the end stream
+  link.sendEndStream(sid_);
+  // signal the disconnection
+  link.sendDisconnect(sid_);
 }
 
 // ------------ method called when starting to processes a run  ------------
-/*
+
 void
-MPIController::beginRun(edm::Run const&, edm::EventSetup const&)
+MPIController::beginRun(edm::Run const& run, edm::EventSetup const& setup)
 {
+	auto aux = run.runAuxiliary(); 
+	aux.setProcessHistoryID(run.processHistory().id()); 
+	link.sendBeginRun(sid_, aux); 
+	//transmit the ProcessHistory
+	link.sendSerializedProduct(sid_, run.processHistory()) ; 
 }
-*/
+
 
 // ------------ method called when ending the processing of a run  ------------
-/*
+
 void
-MPIController::endRun(edm::Run const&, edm::EventSetup const&)
+MPIController::endRun(edm::Run const& run, edm::EventSetup const& setup)
 {
+	auto aux = run.runAuxiliary(); 
+	aux.setProcessHistoryID(run.processHistory().id()); 
+	link.sendEndRun(sid_, aux); 
 }
-*/
+
 
 // ------------ method called when starting to processes a luminosity block  ------------
-/*
+
 void
-MPIController::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+MPIController::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
 {
+	auto aux = lumi.luminosityBlockAuxiliary(); 
+	aux.setProcessHistoryID(lumi.processHistory().id()); 
+	link.sendBeginLuminosityBlock(sid_, aux); 
+	
 }
-*/
+
 
 // ------------ method called when ending the processing of a luminosity block  ------------
-/*
+
 void
-MPIController::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+MPIController::endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
 {
+	auto aux = lumi.luminosityBlockAuxiliary(); 
+	aux.setProcessHistoryID(lumi.processHistory().id()); 
+	link.sendEndLuminosityBlock(sid_, aux); 
 }
-*/
+
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void MPIController::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {

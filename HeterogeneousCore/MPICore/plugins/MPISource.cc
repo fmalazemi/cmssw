@@ -83,19 +83,33 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   service->required();
   communicator_.emplace("mpi_server"); //config.getUntrackedParameter<std::string>("service"));
   communicator_->publish_and_listen();
+  communicator_->splitCommunicator(0); 
   edm::LogAbsolute("MPI") << "A connection to the MPI server at port " << port_<<" established";
   // FIXME move into the MPIService ?
   // make sure the EDM MPI types are available
   EDM_MPI_build_types();
 
   // create an intercommunicator and accept a client connection
-  comm_ = communicator_->getCommunicator(); 
+  comm_ = communicator_->getControlCommunicator(); 
   link = MPISender(comm_, 0);
+
+  int rank ; 
+   MPI_Comm_rank(communicator_->getCommunicator(), &rank);
+   printf("Rank is %d\n", rank); 
+    MPI_Comm_rank(comm_, &rank);
+   printf("Control Rank is %d\n", rank);
+   int size;
+   MPI_Comm_size(MPI_COMM_WORLD, &size);
+   printf("MPI_COMM_WORLd size = %d", size);
+   MPI_Comm_size(communicator_->getCommunicator(), &size);
+   printf("com->getCommunicator() size = %d", size);
+   MPI_Comm_size(communicator_->getControlCommunicator(), &size);
+   printf("com->getControlCommunicator() size = %d", size);
 
   // wait for a client to connect
   MPI_Status status;
   EDM_MPI_Empty_t buffer;
-  std::cout<<"WE ARE HERE\n"; 
+  std::cout<<"WE ARE HERE - \n"; 
   MPI_Recv(&buffer, 1, EDM_MPI_Empty, MPI_ANY_SOURCE, EDM_MPI_Connect, comm_, &status);
   edm::LogAbsolute("MPI") << "connected from " << status.MPI_SOURCE;
   std::cout<<"MPI CONNECTED x =  \n";
@@ -140,13 +154,13 @@ std::cout<<"Source Dies\n";
 }
 
 MPISource::ItemType MPISource::getNextItemType() {
-  std::cout<<"WE ARE HERE AT GETNEXTITEM\n";
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm_, &message, &status);
   switch (status.MPI_TAG) {
     // Connect message
     case EDM_MPI_Connect: {
+	printf("EDM_MPI_Connect\n"); 
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
@@ -157,6 +171,8 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // Disconnect message
     case EDM_MPI_Disconnect: {
+	printf("EDM_MPI_Disconnect\n");
+
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
@@ -167,6 +183,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // BeginStream message
     case EDM_MPI_BeginStream: {
+	printf("EDM_MPI_BeginStream\n"); 
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
@@ -177,6 +194,8 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // EndStream message
     case EDM_MPI_EndStream: {
+	printf("EDM_MPI_EndStream\n"); 
+
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
@@ -187,6 +206,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // BeginRun message
     case EDM_MPI_BeginRun: {
+	printf("EDM_MPI_BeginRun\n"); 
       // receive the RunAuxiliary
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
@@ -212,6 +232,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // EndRun message
     case EDM_MPI_EndRun: {
+      printf("EDM_MPI_EndRun\n"); 
       // receive the RunAuxiliary message
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
@@ -222,6 +243,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // BeginLuminosityBlock message
     case EDM_MPI_BeginLuminosityBlock: {
+	printf("EDM_MPI_BeginLuminosityBlock\n"); 
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
@@ -234,6 +256,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // EndLuminosityBlock message
     case EDM_MPI_EndLuminosityBlock: {
+	printf("EDM_MPI_EndLuminosityBlock\n"); 
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
@@ -244,7 +267,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // ProcessEvent message
     case EDM_MPI_ProcessEvent: {
-      std::cout<<"We received EDM_MPI_ProcessEvent tag \n";
+	printf("EDM_MPI_ProcessEvent\n"); 
       // allocate a new event
       auto& event = events_.emplace_back();
       //event.eventProducts.reserve(productRegistryUpdate().size());
@@ -343,6 +366,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // unexpected message
     default: {
+		     printf("default\n"); 
       return IsInvalid;
     }
   }

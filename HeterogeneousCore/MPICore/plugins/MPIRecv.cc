@@ -151,12 +151,13 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   //****************** MPI Begin *****************
   const MPICommunicator* communicator = iEvent.get(communicatorToken_).token;   
+  MPI_Comm dataComm_ = communicator->getDataCommunicator();
   std::cout<<"******************  RECV waiting for send to connect\n";
  
   MPI_Status status;
-  int dummyInt; 
-  MPI_Recv(&dummyInt, 1, MPI_INT, MPI_ANY_SOURCE, 432, communicator->getCommunicator(), MPI_STATUS_IGNORE);
-  std::cout<<"___Received Data = "<<dummyInt<<std::endl;
+  int dummyInt_; 
+  MPI_Recv(&dummyInt_, 1, MPI_INT, MPI_ANY_SOURCE, 432, dataComm_, MPI_STATUS_IGNORE);
+  std::cout<<"___Received Data = "<<dummyInt_<<std::endl;
 
   std::cout<<"*********************  RECV: Receiver got the message:\n >>>>>>>>>>>>>>>>>>>>>>>>> \n";
   //****************** MPI END ******************

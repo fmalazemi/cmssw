@@ -16,12 +16,17 @@ public:
     
   void publish_and_listen();
   void connect();
+  void splitCommunicator(int); 
   
 MPI_Comm getCommunicator() const ; 
+MPI_Comm getControlCommunicator() const; 
+MPI_Comm getDataCommunicator() const; 
 
 private:
 
  MPI_Comm communicator_; 
+ MPI_Comm controlCommunicator_; 
+ MPI_Comm dataCommunicator_; 
  char port_[MPI_MAX_PORT_NAME];
  const std::string serviceName_ = "";
  bool isService_ = false ; //Service is your are a listener 

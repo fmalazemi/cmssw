@@ -52,9 +52,26 @@ void MPICommunicator::publish_and_listen(){
        isDone = true; 
 }
 
+void MPICommunicator::splitCommunicator(int i){
+	//Key ties are broken according to original rank
+	//color 0 for control Communicator	
+	MPI_Comm_split(communicator_, 0, i, &controlCommunicator_);
+	//color 1 for data communicator
+	MPI_Comm_split(communicator_, 1, i, &dataCommunicator_); 
+
+}
+
+
 MPI_Comm MPICommunicator::getCommunicator()  const {
         return communicator_; 
 }
 
+MPI_Comm MPICommunicator::getDataCommunicator() const{ 
+	return dataCommunicator_; 
+}
+
+MPI_Comm MPICommunicator::getControlCommunicator() const {
+	return controlCommunicator_; 
+}
 
 
