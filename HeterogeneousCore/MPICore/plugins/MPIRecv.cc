@@ -150,8 +150,8 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
  
 
   //****************** MPI Begin *****************
-  const MPICommunicator* communicator = iEvent.get(communicatorToken_).token;   
-  MPI_Comm dataComm_ = communicator->getDataCommunicator();
+  const MPICommunicator* MPICommPTR = iEvent.get(communicatorToken_).token;   
+  MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
   std::cout<<"******************  RECV waiting for send to connect\n";
  
   MPI_Status status;

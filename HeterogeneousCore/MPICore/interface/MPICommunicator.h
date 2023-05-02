@@ -18,19 +18,17 @@ public:
   void connect();
   void splitCommunicator(); 
   
-MPI_Comm getCommunicator() const ; 
-MPI_Comm getControlCommunicator() const; 
-MPI_Comm getDataCommunicator() const; 
+MPI_Comm mainCommunicator() const ; 
+MPI_Comm controlCommunicator() const; 
+MPI_Comm dataCommunicator() const; 
 
 private:
 
- MPI_Comm communicator_; 
- MPI_Comm controlCommunicator_; 
- MPI_Comm dataCommunicator_; 
+ MPI_Comm mainComm_; 
+ MPI_Comm controlComm_; 
+ MPI_Comm dataComm_; 
  char port_[MPI_MAX_PORT_NAME];
  const std::string serviceName_ = "";
- bool isService_ = false ; //Service is your are a listener 
- bool isDone = false; 
 
 };
 

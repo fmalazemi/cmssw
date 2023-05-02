@@ -1,10 +1,15 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include "mpi.h"
+
+
 
 #include <TBuffer.h>
 #include <TBufferFile.h>
 #include <TClass.h>
+
+
 
 #include "DataFormats/Provenance/interface/BranchListIndex.h"
 #include "DataFormats/Provenance/interface/EventAuxiliary.h"
@@ -30,11 +35,12 @@
 #include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
+
+
+
 #include "api.h"
 #include "conversion.h"
 #include "messages.h"
-#include "mpi.h"
-#include<string>
 
 class MPISource : public edm::PuttableSourceBase {
 public:
@@ -52,7 +58,7 @@ private:
   void readEvent_(edm::EventPrincipal& eventPrincipal) override;
 
   char port_[MPI_MAX_PORT_NAME];
-  MPI_Comm comm_ = MPI_COMM_NULL;
+  MPI_Comm controlComm_ = MPI_COMM_NULL;
   MPISender link;
 
   edm::ProcessHistory history_;
@@ -90,35 +96,22 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   EDM_MPI_build_types();
 
   // create an intercommunicator and accept a client connection
-  comm_ = communicator_->getControlCommunicator(); 
-  link = MPISender(comm_, 0);
-
-  int rank ; 
-   MPI_Comm_rank(communicator_->getCommunicator(), &rank);
-   printf("Rank is %d\n", rank); 
-    MPI_Comm_rank(comm_, &rank);
-   printf("Control Rank is %d\n", rank);
-   int size;
-   MPI_Comm_size(MPI_COMM_WORLD, &size);
-   printf("MPI_COMM_WORLd size = %d", size);
-   MPI_Comm_size(communicator_->getCommunicator(), &size);
-   printf("com->getCommunicator() size = %d", size);
-   MPI_Comm_size(communicator_->getControlCommunicator(), &size);
-   printf("com->getControlCommunicator() size = %d", size);
+  controlComm_ = communicator_->controlCommunicator(); 
+  link = MPISender(controlComm_, 0);
 
   // wait for a client to connect
-  MPI_Status status;
+  /*MPI_Status status;
   EDM_MPI_Empty_t buffer;
   std::cout<<"WE ARE HERE - \n"; 
-  MPI_Recv(&buffer, 1, EDM_MPI_Empty, MPI_ANY_SOURCE, EDM_MPI_Connect, comm_, &status);
+  MPI_Recv(&buffer, 1, EDM_MPI_Empty, MPI_ANY_SOURCE, EDM_MPI_Connect, controlComm_, &status);
   edm::LogAbsolute("MPI") << "connected from " << status.MPI_SOURCE;
-  std::cout<<"MPI CONNECTED x =  \n";
+  */std::cout<<"MPI CONNECTED x =  \n";
   /* FIXME move MPIRecv
   // receive the branch descriptions
   MPI_Message message;
   int source = status.MPI_SOURCE;
   while (true) {
-    MPI_Mprobe(source, MPI_ANY_TAG, comm_, &message, &status);
+    MPI_Mprobe(source, MPI_ANY_TAG, controlComm_, &message, &status);
     if (status.MPI_TAG == EDM_MPI_SendComplete) {
       // all branches have been received
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
@@ -156,7 +149,7 @@ std::cout<<"Source Dies\n";
 MPISource::ItemType MPISource::getNextItemType() {
   MPI_Status status;
   MPI_Message message;
-  MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm_, &message, &status);
+  MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &message, &status);
   switch (status.MPI_TAG) {
     // Connect message
     case EDM_MPI_Connect: {
@@ -214,7 +207,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       edmFromBuffer(buffer, *runAuxiliary_);
 
       // receive the ProcessHistory
-      MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, comm_, &message, &status);
+      MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
       int size;
       MPI_Get_count(&status, MPI_BYTE, &size);
       TBufferFile blob{TBuffer::kRead, size};
@@ -276,7 +269,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
 
 
-      //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, comm_, MPI_STATUS_IGNORE);
+      //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, MPI_STATUS_IGNORE);
       // receive the EventAuxiliary
       auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
       //auto [status, stream] = link.receiveEvent(event, message);
@@ -289,7 +282,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       //
       MPI_Message message;
       while (true) {
-        MPI_Mprobe(source, MPI_ANY_TAG, comm_, &message, &status);
+        MPI_Mprobe(source, MPI_ANY_TAG, controlComm_, &message, &status);
         if (EDM_MPI_SendComplete == status.MPI_TAG) {
           // all products have been received
           EDM_MPI_Empty_t buffer;
@@ -313,7 +306,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
           edm::BranchDescription const& branch = productRegistry()->productList().at(key);
 
-          MPI_Mprobe(source, MPI_ANY_TAG, comm_, &message, &status);
+          MPI_Mprobe(source, MPI_ANY_TAG, controlComm_, &message, &status);
           {
             // receive the ProductProvenance
             assert(EDM_MPI_SendSerializedProduct == status.MPI_TAG);
@@ -323,7 +316,7 @@ MPISource::ItemType MPISource::getNextItemType() {
             MPI_Mrecv(buffer.Buffer(), size, MPI_BYTE, &message, &status);
             TClass::GetClass(typeid(edm::ProductProvenance))->ReadBuffer(buffer, &provenance);
           }
-          MPI_Mprobe(source, MPI_ANY_TAG, comm_, &message, &status);
+          MPI_Mprobe(source, MPI_ANY_TAG, controlComm_, &message, &status);
           {
             // receive the ProductID
             assert(EDM_MPI_SendSerializedProduct == status.MPI_TAG);
@@ -333,7 +326,7 @@ MPISource::ItemType MPISource::getNextItemType() {
             MPI_Mrecv(buffer.Buffer(), size, MPI_BYTE, &message, &status);
             TClass::GetClass(typeid(edm::ProductID))->ReadBuffer(buffer, &pid);
           }
-          MPI_Mprobe(source, MPI_ANY_TAG, comm_, &message, &status);
+          MPI_Mprobe(source, MPI_ANY_TAG, controlComm_, &message, &status);
           {
             // receive the product
             assert(EDM_MPI_SendSerializedProduct == status.MPI_TAG);

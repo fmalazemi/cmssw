@@ -56,7 +56,7 @@ private:
 
   // ----------member data ---------------------------
   edm::StreamID sid_ = edm::StreamID::invalidStreamID(); 
-  std::optional<MPICommunicator> communicator_; 
+  //std::optional<MPICommunicator> comm_; 
   MPISender link; 
   edm::EDPutTokenT<MPIToken> token_; 
 };
@@ -72,7 +72,7 @@ private:
 //
 // constructors and destructor
 //
-MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator const* c):token_{produces()} {
+MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator const* MPICommPTR):token_{produces()} {
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -84,7 +84,7 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-  link = MPISender(c->getControlCommunicator(), 0); 
+  link = MPISender(MPICommPTR->controlCommunicator(), 0); 
 }
 
 MPIController::~MPIController() {
@@ -103,25 +103,22 @@ std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::Para
 
 	EDM_MPI_build_types();
         edm::Service<MPIService> service;
+
         service->required();
-        std::unique_ptr<MPICommunicator> com = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
+        std::unique_ptr<MPICommunicator> MPICommPTR = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
 
-        com->connect();
-        com->splitCommunicator(); 	
-	EDM_MPI_Empty_t buffer; 
-	std::cout<<"We are here\n";
-	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, com->getControlCommunicator()); 
+        MPICommPTR->connect();
+        MPICommPTR->splitCommunicator(); 	
+//	EDM_MPI_Empty_t buffer; 
+//	std::cout<<"We are here\n";
+//	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, MPICommPTR->controlCommunicator()); 
 
-        /*
-	int x = 77;
-	MPI_Send(&x, 1, MPI_INT, 0, EDM_MPI_Connect, com->getCommunicator()); 
-	*/ 
         std::cout<<"Controller is UP and Connected\n";
  
-        return com;
+        return MPICommPTR;
 }
 
-void MPIController::globalEndJob(MPICommunicator const* iMPICommunicator) {
+void MPIController::globalEndJob(MPICommunicator const* MPICommPTR) {
       //std::cout <<"Number of events seen "<<iMPICommunicator->value<<std::endl;
    }
 
@@ -144,9 +141,9 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
- // MPICommunicator const * com_ptr = (globalCache()->com).get();  // &communicator_.value(); 
- link.sendEvent(sid_, iEvent.eventAuxiliary());
-  iEvent.emplace(token_, globalCache()); 
+  MPICommunicator const * MPICommPTR = globalCache();  
+  link.sendEvent(sid_, iEvent.eventAuxiliary());
+  iEvent.emplace(token_, MPICommPTR); 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
