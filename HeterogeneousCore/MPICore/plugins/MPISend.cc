@@ -76,6 +76,7 @@ private:
  //MPICommunicator* x; 
  edm::EDGetTokenT<MPIToken> communicatorToken_; 
  //add tag var 
+ edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
 //
@@ -171,6 +172,7 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
   int dummyInt_ = 13;  
   MPI_Send(&dummyInt_, 1, MPI_INT, 0, 432, dataComm_); 
+  std::cout<<"MPISend::produce "<<sid_.value()<<std::endl; 
   std::cout<<"--------------  SENDER: Sender sent the dummy integer \"13\" \n"; 
   //****************** MPI END ******************
 
@@ -181,6 +183,7 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPISend::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
+  sid_ = stream;
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------

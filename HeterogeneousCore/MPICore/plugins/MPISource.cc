@@ -153,11 +153,11 @@ MPISource::ItemType MPISource::getNextItemType() {
   switch (status.MPI_TAG) {
     // Connect message
     case EDM_MPI_Connect: {
-	printf("EDM_MPI_Connect\n"); 
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
+	printf("EDM_MPI_Connect, sid = %d\n", buffer.stream); 
       // the Connect message is unexpected here (see above)
       return IsInvalid;
     }
@@ -176,33 +176,34 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // BeginStream message
     case EDM_MPI_BeginStream: {
-	printf("EDM_MPI_BeginStream\n"); 
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
+	printf("EDM_MPI_BeginStream, sid = %d\n", buffer.stream); 
       // nothing else to do
       return getNextItemType();
     }
 
     // EndStream message
     case EDM_MPI_EndStream: {
-	printf("EDM_MPI_EndStream\n"); 
 
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
+	printf("EDM_MPI_EndStream, sid = %d\n", buffer.stream); 
       // nothing else to do
       return getNextItemType();
     }
 
     // BeginRun message
     case EDM_MPI_BeginRun: {
-	printf("EDM_MPI_BeginRun\n"); 
       // receive the RunAuxiliary
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
+	printf("EDM_MPI_BeginRuni, sid = %d\n", buffer.stream); 
+
       runAuxiliary_ = std::make_shared<edm::RunAuxiliary>();
       edmFromBuffer(buffer, *runAuxiliary_);
 
@@ -225,21 +226,21 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // EndRun message
     case EDM_MPI_EndRun: {
-      printf("EDM_MPI_EndRun\n"); 
       // receive the RunAuxiliary message
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
 
+      printf("EDM_MPI_EndRun, sid = %d\n", buffer.stream); 
       // nothing else to do
       return getNextItemType();
     }
 
     // BeginLuminosityBlock message
     case EDM_MPI_BeginLuminosityBlock: {
-	printf("EDM_MPI_BeginLuminosityBlock\n"); 
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
+	printf("EDM_MPI_BeginLuminosityBlock, sid = %d\n", buffer.stream); 
       luminosityBlockAuxiliary_ = std::make_shared<edm::LuminosityBlockAuxiliary>();
       edmFromBuffer(buffer, *luminosityBlockAuxiliary_);
 
@@ -249,18 +250,17 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // EndLuminosityBlock message
     case EDM_MPI_EndLuminosityBlock: {
-	printf("EDM_MPI_EndLuminosityBlock\n"); 
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
 
+	printf("EDM_MPI_EndLuminosityBlock, sid = %d\n", buffer.stream); 
       // nothing else to do
       return getNextItemType();
     }
 
     // ProcessEvent message
     case EDM_MPI_ProcessEvent: {
-	printf("EDM_MPI_ProcessEvent\n"); 
       // allocate a new event
       auto& event = events_.emplace_back();
       //event.eventProducts.reserve(productRegistryUpdate().size());
@@ -272,6 +272,8 @@ MPISource::ItemType MPISource::getNextItemType() {
       //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, MPI_STATUS_IGNORE);
       // receive the EventAuxiliary
       auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
+
+	printf("EDM_MPI_ProcessEvent, sid = %d\n", stream); 
       //auto [status, stream] = link.receiveEvent(event, message);
       //int source = status.MPI_SOURCE;
       event.source = status.MPI_SOURCE;

@@ -40,5 +40,7 @@ process.process_path = cms.Path(
 
 #process.output_path = cms.EndPath(process.output)
 
-process.maxEvents.input = 1
+process.maxEvents.input = 3
 
+process.options.numberOfStreams = 3 
+process.options.numberOfThreads = 3 
