@@ -26,14 +26,15 @@ process.source = cms.Source('EmptySource')
 process.controller = cms.EDProducer("MPIController", service=cms.untracked.string("mpi_server"))
 
 # run the producer on the cpu
-process.sender= cms.EDProducer('MPISend', controller=cms.InputTag("controller"))
+process.generator = cms.EDProducer('GenerateDummyData') 
+process.sender= cms.EDProducer('MPISend', communicator=cms.InputTag("controller"), incomingData=cms.InputTag("generator"))
 
 
 
 process.producer_task = cms.Task(process.controller)
 
 process.process_path = cms.Path(
-    process.sender, process.producer_task)
+    cms.wait(process.generator)+ process.sender, process.producer_task)
 
 
 #process.serial_path = cms.Path(   process.testProducerSerial +  process.testAnalyzerSerial)

@@ -33,7 +33,7 @@
 #include <thread>
 #include "api.h"
 #include "messages.h"
-
+#include<atomic>
 
 
 
@@ -60,6 +60,8 @@ private:
   //std::optional<MPICommunicator> comm_; 
   MPISender link; 
   edm::EDPutTokenT<MPIToken> token_; 
+static std::atomic<int> sharedData;
+
 };
 
 //
@@ -143,6 +145,7 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   printf("MPIController::produce, Sid = %d\n", sid_.value()); 
+  printf("iEvent = %lld\n", iEvent.id().event()); 
   MPICommunicator const * MPICommPTR = globalCache();  
   link.sendEvent(sid_, iEvent.eventAuxiliary());
   iEvent.emplace(token_, MPICommPTR); 
@@ -150,7 +153,7 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   std::cout<<sid_.value()<<" : Enter a number :"<<std::endl; 
   std::cin>>x; 
   std::cout<<sid_.value()<<" : You Entered : "<<x<<std::endl;  
- 
+
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------

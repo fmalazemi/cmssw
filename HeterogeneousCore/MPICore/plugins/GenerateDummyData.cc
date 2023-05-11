@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    HeterogeneousCore/MPIRecv
-// Class:      MPIRecv
+// Package:    HeterogeneousCore/GenerateDummyData
+// Class:      GenerateDummyData
 //
-/**\class MPIRecv MPIRecv.cc HeterogeneousCore/MPIRecv/plugins/MPIRecv.cc
+/**\class GenerateDummyData GenerateDummyData.cc HeterogeneousCore/MPICore/plugins/GenerateDummyData.cc
 
  Description: [one line class summary]
 
@@ -18,44 +18,24 @@
 
 // system include files
 #include <memory>
+#include <ctime>
+#include <cstdlib>
+#include<vector>
+
+
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
-
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 
-//
-// class declaration
-//
-//
-//
-
-/******************
- * MPI Begin
- * Note: For testing purposes we assume Sender will try to find the received (which is lanuched manually at the moment)
- ******************/
-#include<iostream>
-#include<mpi.h>
-#include<cstdlib> 
-#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include<string> 
-#include<vector>
-#include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-/******************
- * MPI end
- ******************/
-
-
-class MPIRecv : public edm::stream::EDProducer<> {
+class GenerateDummyData : public edm::stream::EDProducer<>{
 public:
-  explicit MPIRecv(const edm::ParameterSet&);
-  ~MPIRecv() override;
+  explicit GenerateDummyData(const edm::ParameterSet&);
+  ~GenerateDummyData() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -70,9 +50,9 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- //MPICommunicator* x; 
- edm::EDGetTokenT<MPIToken> communicatorToken_; 
+ edm::EDPutTokenT<std::vector<int>> dataToken_; 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
+ std::vector<int> data_; 
 };
 
 //
@@ -89,12 +69,11 @@ private:
 //
 // static data member definitions
 //
-
+    
 //
 // constructors and destructor
 //
-MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("controller"))}{
-
+GenerateDummyData::GenerateDummyData(const edm::ParameterSet& iConfig):dataToken_{produces()}{
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -107,37 +86,32 @@ MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
   */
   //now do what ever other initialization is needed
 
-
-  //************* MPI Begin *****************
-	std::cout<<"MPI Recv is up\n";
-  //************* MPI END ******************
 	
 }
 
-MPIRecv::~MPIRecv() {
+GenerateDummyData::~GenerateDummyData() {
   // do anything here that needs to be done at destruction time
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
 
 
-  //**************** MPI Begin ****************
-  //MPI_Finalize(); 
- 
-  //**************** MPI END *****************
 }
-
 //
 // member functions
 //
 
+
+
 // ------------ method called to produce the data  ------------
-void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
+void GenerateDummyData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
   using namespace edm;
+  using namespace std;
   /* This is an event example
   //Read 'ExampleData' from the Event
   ExampleData const& in = iEvent.get(inToken_);
-
+  
   //Use the ExampleData to create an ExampleData2 which 
   // is put into the Event
   iEvent.put(std::make_unique<ExampleData2>(in));
@@ -147,54 +121,35 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
- 
-
-  //****************** MPI Begin *****************
-  const MPICommunicator* MPICommPTR = iEvent.get(communicatorToken_).token;   
-  MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-
-
-  std::cout<<"******************  RECV (sid "<<sid_.value()<<") waiting for send to connect\n";
-  MPI_Status status;
-  MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, dataComm_, &status);
-  int dataSize; 
-  MPI_Get_count(&status, MPI_INT, &dataSize); 
-  printf("DataSize = %d\n", dataSize); 
-  std::vector<int> data ;
-  data.resize(dataSize);
-  MPI_Recv(&data[0], dataSize, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, dataComm_, MPI_STATUS_IGNORE); 
-
-/*
-  int dummyInt_; 
-  MPI_Recv(&dummyInt_, 1, MPI_INT, MPI_ANY_SOURCE, 432, dataComm_, MPI_STATUS_IGNORE);
-  std::cout<<"___Received Data = "<<dummyInt_<<std::endl;
-*/
-  printf("data(sid %d) = ",sid_.value()); 
-  for(int i : data){
-	 printf("%d ", i); 
+  std::srand(3*(sid_.value()+1)); //std::time(0));
+  data_.clear();
+  printf("GenerateDummyData::produce --> Stream  = %d\n",sid_.value());
+  for(int i = 0; i < 10; i++){
+	data_.push_back(std::rand()%10000);
   }
-  printf("\n");  
-  std::cout<<"*********************  RECV: Receiver( StreamID "<<sid_.value()<<" got the message:\n >>>>>>>>>>>>>>>>>>>>>>>>> \n";
-  //****************** MPI END ******************
-
+  printf("Data : "); 
+  for(int i : data_) printf("%d ", i); 
+  printf("\n"); 
+  iEvent.emplace(dataToken_, data_);
 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
-void MPIRecv::beginStream(edm::StreamID stream) { 
-  sid_ = stream;
+void GenerateDummyData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
+  sid_ = stream; 
+  printf("GenerateDummyData::beginStream: Stream %d\n", sid_.value()) ;
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
-void MPIRecv::endStream() {
+void GenerateDummyData::endStream() {
   // please remove this method if not needed
 }
 
 // ------------ method called when starting to processes a run  ------------
 /*
 void
-MPIRecv::beginRun(edm::Run const&, edm::EventSetup const&)
+GenerateDummyData::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -202,7 +157,7 @@ MPIRecv::beginRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when ending the processing of a run  ------------
 /*
 void
-MPIRecv::endRun(edm::Run const&, edm::EventSetup const&)
+GenerateDummyData::endRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -210,7 +165,7 @@ MPIRecv::endRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when starting to processes a luminosity block  ------------
 /*
 void
-MPIRecv::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+GenerateDummyData::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
@@ -218,13 +173,13 @@ MPIRecv::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const
 // ------------ method called when ending the processing of a luminosity block  ------------
 /*
 void
-MPIRecv::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+GenerateDummyData::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void MPIRecv::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void GenerateDummyData::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -233,4 +188,4 @@ void MPIRecv::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(MPIRecv);
+DEFINE_FWK_MODULE(GenerateDummyData);

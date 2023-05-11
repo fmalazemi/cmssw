@@ -75,6 +75,7 @@ private:
   // ----------member data ---------------------------
  //MPICommunicator* x; 
  edm::EDGetTokenT<MPIToken> communicatorToken_; 
+ edm::EDGetTokenT<std::vector<int>> inData_; 
  //add tag var 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
@@ -97,7 +98,7 @@ private:
 //
 // constructors and destructor
 //
-MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("controller"))}{
+MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("communicator"))},inData_{consumes(iConfig.getParameter<edm::InputTag>("incomingData"))}{
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -170,10 +171,21 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //****************** MPI Begin *****************
   const MPICommunicator* MPICommPTR = iEvent.get(communicatorToken_).token;   
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
+
+  std::vector<int> data = iEvent.get(inData_); 
+  printf("+++++ _____ (Sid %d) in Data = ",sid_.value()); 
+  for(int i : data){
+	  printf("%d ", i); 
+  }
+  printf(" _____ ++++++\n");
+ 
+  MPI_Send(&data[0], data.size(), MPI_INT, 0, sid_.value(), dataComm_); 
+  /*  
   int dummyInt_ = 13;  
   MPI_Send(&dummyInt_, 1, MPI_INT, 0, 432, dataComm_); 
   std::cout<<"MPISend::produce "<<sid_.value()<<std::endl; 
-  std::cout<<"--------------  SENDER: Sender sent the dummy integer \"13\" \n"; 
+  */ 
+  std::cout<<"--------------  SENDER sent data (Stream ID = "<<sid_.value()<<") \n"; 
   //****************** MPI END ******************
 
 
