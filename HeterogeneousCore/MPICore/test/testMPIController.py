@@ -28,20 +28,21 @@ process.controller = cms.EDProducer("MPIController", service=cms.untracked.strin
 # run the producer on the cpu
 process.generator = cms.EDProducer('GenerateDummyData') 
 process.sender= cms.EDProducer('MPISend', communicator=cms.InputTag("controller"), incomingData=cms.InputTag("generator"))
-
+process.recv = cms.EDProducer('MPIRecv', controller=cms.InputTag("controller")) 
+process.compare = cms.EDProducer('CompareData', sourceData=cms.InputTag("recv"), controllerData=cms.InputTag("generator"))
 
 
 process.producer_task = cms.Task(process.controller)
 
 process.process_path = cms.Path(
-    cms.wait(process.generator)+ process.sender, process.producer_task)
+    process.generator+ cms.wait(process.sender) + process.recv+process.compare, process.producer_task)
 
 
 #process.serial_path = cms.Path(   process.testProducerSerial +  process.testAnalyzerSerial)
 
 #process.output_path = cms.EndPath(process.output)
 
-process.maxEvents.input = 3
+process.maxEvents.input = 1
 
-process.options.numberOfStreams = 3 
+process.options.numberOfStreams = 1
 process.options.numberOfThreads = 3 

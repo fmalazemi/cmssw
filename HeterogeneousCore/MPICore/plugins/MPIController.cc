@@ -60,7 +60,6 @@ private:
   //std::optional<MPICommunicator> comm_; 
   MPISender link; 
   edm::EDPutTokenT<MPIToken> token_; 
-static std::atomic<int> sharedData;
 
 };
 
@@ -145,31 +144,27 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   printf("MPIController::produce, Sid = %d\n", sid_.value()); 
-  printf("iEvent = %lld\n", iEvent.id().event()); 
+  printf("iEvent = %d\n", (int)(iEvent.id().event())); 
   MPICommunicator const * MPICommPTR = globalCache();  
-  link.sendEvent(sid_, iEvent.eventAuxiliary());
-  iEvent.emplace(token_, MPICommPTR); 
-  int x = 0; 
-  std::cout<<sid_.value()<<" : Enter a number :"<<std::endl; 
-  std::cin>>x; 
-  std::cout<<sid_.value()<<" : You Entered : "<<x<<std::endl;  
+  int tagID = (int)(iEvent.id().event()); 
+  link.sendEvent(tagID, iEvent.eventAuxiliary());
+  iEvent.emplace(token_, MPICommPTR, tagID, 0 ); 
 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPIController::beginStream(edm::StreamID sid) {
-  // please remove this method if not needed
-  sid_ = sid;
+ // please remove this method if not needed
+ sid_ = sid;
  // link.sendConnect(sid_);
  printf("MPIController::beginStream, Sid = %d\n", sid_.value());
-  link.sendBeginStream(sid_);
+ link.sendBeginStream(sid_);
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
 void MPIController::endStream() {
   printf("MPIController::endStream, Sid = %d\n", sid_.value());
-	// signal the end stream
-
+  // signal the end stream
   link.sendEndStream(sid_);
   // signal the disconnection
   link.sendDisconnect(sid_);

@@ -11,10 +11,11 @@ process.source = cms.Source("MPISource")
 
 
 process.recv = cms.EDProducer('MPIRecv', controller=cms.InputTag("source"))
-
+process.sortData = cms.EDProducer('SortData', incomingData=cms.InputTag('recv')) 
+process.send = cms.EDProducer('MPISend', communicator=cms.InputTag("source"), incomingData=cms.InputTag("sortData"))
 
 process.process_path = cms.Path(
-    process.recv)
+    cms.wait(process.recv)+process.sortData+process.send)
 
 
 
@@ -24,8 +25,8 @@ process.maxEvents = cms.untracked.PSet(
 )
 
 process.options = cms.untracked.PSet(
-    numberOfThreads = cms.untracked.uint32(3),
-    numberOfStreams = cms.untracked.uint32(3),
+    numberOfThreads = cms.untracked.uint32(1),
+    numberOfStreams = cms.untracked.uint32(1),
 )
 
 

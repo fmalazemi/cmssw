@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    HeterogeneousCore/MPIRecv
-// Class:      MPIRecv
+// Package:    HeterogeneousCore/CompareData
+// Class:      CompareData
 //
-/**\class MPIRecv MPIRecv.cc HeterogeneousCore/MPIRecv/plugins/MPIRecv.cc
+/**\class CompareData CompareData.cc HeterogeneousCore/MPICore/plugins/CompareData.cc
 
  Description: [one line class summary]
 
@@ -28,6 +28,10 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
+#include<vector>
+#include <sstream>
+#include <algorithm>
+  #include <typeinfo>
 
 //
 // class declaration
@@ -45,20 +49,19 @@
 #include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include<string> 
-#include<vector>
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
 /******************
  * MPI end
  ******************/
 
-
-class MPIRecv : public edm::stream::EDProducer<> {
+class CompareData : public edm::stream::EDProducer<>{
 public:
-  explicit MPIRecv(const edm::ParameterSet&);
-  ~MPIRecv() override;
+  explicit CompareData(const edm::ParameterSet&);
+  ~CompareData() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
+ //void acquire(edm::Event const&, edm::EventSetup const&, edm::WaitingTaskWithArenaHolder) override;
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -71,8 +74,10 @@ private:
 
   // ----------member data ---------------------------
  //MPICommunicator* x; 
- edm::EDGetTokenT<MPIToken> communicatorToken_; 
- edm::EDPutTokenT<std::vector<int>> outData_; 
+ edm::EDGetTokenT<std::vector<int>> sourceData_; 
+
+ edm::EDGetTokenT<std::vector<int>> controllerData_; 
+ //add tag var 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
@@ -90,12 +95,11 @@ private:
 //
 // static data member definitions
 //
-
+    
 //
 // constructors and destructor
 //
-MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("controller"))},outData_{produces()}{
-
+CompareData::CompareData(const edm::ParameterSet& iConfig):sourceData_{consumes(iConfig.getParameter<edm::InputTag>("sourceData"))},controllerData_{consumes(iConfig.getParameter<edm::InputTag>("controllerData"))}{
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -108,37 +112,25 @@ MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
   */
   //now do what ever other initialization is needed
 
-
-  //************* MPI Begin *****************
-	std::cout<<"MPI Recv is up\n";
-  //************* MPI END ******************
 	
 }
 
-MPIRecv::~MPIRecv() {
+CompareData::~CompareData() {
   // do anything here that needs to be done at destruction time
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
-
-
-  //**************** MPI Begin ****************
-  //MPI_Finalize(); 
- 
-  //**************** MPI END *****************
 }
 
-//
-// member functions
-//
-
 // ------------ method called to produce the data  ------------
-void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
+void CompareData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
+
   using namespace edm;
+  using namespace std;
   /* This is an event example
   //Read 'ExampleData' from the Event
   ExampleData const& in = iEvent.get(inToken_);
-
+  
   //Use the ExampleData to create an ExampleData2 which 
   // is put into the Event
   iEvent.put(std::make_unique<ExampleData2>(in));
@@ -148,67 +140,40 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
- 
-
-  //****************** MPI Begin) *****************
-  MPIToken tokenInfo = iEvent.get(communicatorToken_);
-  const MPICommunicator* MPICommPTR = tokenInfo.token;   
-  MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-  int tagID = tokenInfo.stream; 
-  int source = tokenInfo.source; 
-  printf("Streeeeeeeeem and tagID = %d %d\n", sid_.value(), tagID); 
-
-  std::cout<<"******************  RECV (sid "<<sid_.value()<<") waiting for send to connect\n";
-  MPI_Status status;
+  //****************** MPI Begin *****************
+  std::vector<int> s_data = iEvent.get(sourceData_);
+  std::vector<int> c_data = iEvent.get(controllerData_); 
+  std::sort(c_data.begin(), c_data.end());
   
-  MPI_Message message;
-  MPI_Mprobe(MPI_ANY_SOURCE, tagID, dataComm_, &message, &status);
-
-
-  int dataSize; 
-  MPI_Get_count(&status, MPI_INT, &dataSize); 
-  printf("DataSize = %d\n", dataSize); 
-  std::vector<int> data ;
-  data.resize(dataSize);
-  MPI_Mrecv(&data[0], dataSize, MPI_INT, &message,  &status); 
-  /* 
-  std::vector<int> data ;
-  data.resize(10);
-  int x; 
- // MPI_Sendrecv(&x, 1, MPI_INT, 0, (int)(iEvent.id().event()), &data[0], 10, MPI_INT, 0, (int)(iEvent.id().event()), dataComm_, &status);
- */
-/*
-  int dummyInt_; 
-  MPI_Recv(&dummyInt_, 1, MPI_INT, MPI_ANY_SOURCE, 432, dataComm_, MPI_STATUS_IGNORE);
-  std::cout<<"___Received Data = "<<dummyInt_<<std::endl;
-*/
-  printf("data(sid %d) = ",sid_.value()); 
-  for(int i : data){
-	 printf("%d ", i); 
+  if(c_data.size() == s_data.size()); 
+  for(std::size_t i = 0; i < c_data.size(); i++){
+	  assert(c_data[i] == s_data[i]);
   }
-  printf("\n");  
-  std::cout<<"*********************  RECV: Receiver( StreamID "<<sid_.value()<<" got the message:\n >>>>>>>>>>>>>>>>>>>>>>>>> \n";
-  iEvent.emplace(outData_, data);
+  printf("Event %d, Stream %d, The data are equal\n", (int)(iEvent.id().event()), sid_.value()); 
+
+
+
   //****************** MPI END ******************
+
 
 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
-void MPIRecv::beginStream(edm::StreamID stream) { 
-  sid_ = stream;
+void CompareData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
+  sid_ = stream;
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
-void MPIRecv::endStream() {
+void CompareData::endStream() {
   // please remove this method if not needed
 }
 
 // ------------ method called when starting to processes a run  ------------
 /*
 void
-MPIRecv::beginRun(edm::Run const&, edm::EventSetup const&)
+CompareData::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -216,7 +181,7 @@ MPIRecv::beginRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when ending the processing of a run  ------------
 /*
 void
-MPIRecv::endRun(edm::Run const&, edm::EventSetup const&)
+CompareData::endRun(edm::Run const&, edm::EventSetup const&)
 {
 }
 */
@@ -224,7 +189,7 @@ MPIRecv::endRun(edm::Run const&, edm::EventSetup const&)
 // ------------ method called when starting to processes a luminosity block  ------------
 /*
 void
-MPIRecv::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+CompareData::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
@@ -232,13 +197,13 @@ MPIRecv::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const
 // ------------ method called when ending the processing of a luminosity block  ------------
 /*
 void
-MPIRecv::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+CompareData::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 */
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void MPIRecv::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void CompareData::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -247,4 +212,4 @@ void MPIRecv::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(MPIRecv);
+DEFINE_FWK_MODULE(CompareData);

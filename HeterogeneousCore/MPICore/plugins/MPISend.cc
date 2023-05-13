@@ -75,7 +75,9 @@ private:
   // ----------member data ---------------------------
  //MPICommunicator* x; 
  edm::EDGetTokenT<MPIToken> communicatorToken_; 
+ edm::EDGetTokenT<MPIToken> outComm_; 
  edm::EDGetTokenT<std::vector<int>> inData_; 
+ edm::EDPutTokenT<std::vector<int>> outData_; 
  //add tag var 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
@@ -169,17 +171,20 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   //****************** MPI Begin *****************
-  const MPICommunicator* MPICommPTR = iEvent.get(communicatorToken_).token;   
+  MPIToken tokenInfo = iEvent.get(communicatorToken_); 
+  const MPICommunicator* MPICommPTR =tokenInfo.token;   
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-
+  int tagID = tokenInfo.stream; 
   std::vector<int> data = iEvent.get(inData_); 
-  printf("+++++ _____ (Sid %d) in Data = ",sid_.value()); 
+  printf("+++++ _____ (Sid %d, %d, %d) in Data = ",sid_.value(), tagID, (int)iEvent.id().event()); 
   for(int i : data){
 	  printf("%d ", i); 
   }
   printf(" _____ ++++++\n");
- 
-  MPI_Send(&data[0], data.size(), MPI_INT, 0, sid_.value(), dataComm_); 
+  int x; 
+  MPI_Status status;
+  //MPI_Sendrecv(&data[0], data.size(), MPI_INT, 0, (int)(iEvent.id().event()), &x, 1, MPI_INT, 0, (int)(iEvent.id().event()), dataComm_, &status);
+  MPI_Send(&data[0], (int)data.size(), MPI_INT, 0, tagID, dataComm_);  
   /*  
   int dummyInt_ = 13;  
   MPI_Send(&dummyInt_, 1, MPI_INT, 0, 432, dataComm_); 

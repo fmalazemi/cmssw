@@ -121,7 +121,7 @@ void GenerateDummyData::produce(edm::Event& iEvent, const edm::EventSetup& iSetu
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
-  std::srand(3*(sid_.value()+1)); //std::time(0));
+  std::srand((int)iEvent.id().event()); //std::time(0));
   data_.clear();
   printf("GenerateDummyData::produce --> Stream  = %d\n",sid_.value());
   for(int i = 0; i < 10; i++){
