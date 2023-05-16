@@ -243,11 +243,11 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
-      log<<"EDM_MPI_BeginLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
 
       luminosityBlockAuxiliary_ = std::make_shared<edm::LuminosityBlockAuxiliary>();
       edmFromBuffer(buffer, *luminosityBlockAuxiliary_);
 
+      log<<"EDM_MPI_BeginLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
       // signal a new lumisection
       return IsLumi;
     }
@@ -276,12 +276,12 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the EventAuxiliary
       auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
 
-      log<<"EDM_MPI_ProcessEvent (stream = "<< event.stream<<", source = "<<event.source<<").";
       //auto [status, stream] = link.receiveEvent(event, message);
       //int source = status.MPI_SOURCE;
       event.source = status.MPI_SOURCE;
       event.stream = stream; 
 
+      log<<"EDM_MPI_ProcessEvent (stream = "<< event.stream<<", source = "<<event.source<<").";
 
       /* FIXME move MPIRecv
       //

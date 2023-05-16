@@ -230,7 +230,6 @@ MPIController::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::Event
 void
 MPIController::endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
 {
-	printf("MPIController::endLuminosityBlock, Sid = %d\n", sid_.value());
 	auto aux = lumi.luminosityBlockAuxiliary(); 
 	aux.setProcessHistoryID(lumi.processHistory().id()); 
 	link.sendEndLuminosityBlock(sid_.value(), aux); 

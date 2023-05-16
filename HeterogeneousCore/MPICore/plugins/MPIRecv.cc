@@ -122,7 +122,7 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   
-  
+  printf("______________HE WE ALREADY HERE\n");  
   edm::LogAbsolute log("MPI");
 
 
@@ -163,6 +163,7 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPIRecv::beginStream(edm::StreamID stream) { 
   sid_ = stream;
+edm::LogAbsolute("MPI")<<"MPIRecv::beginStream (Stream "<<sid_.value()<<").";
   // please remove this method if not needed
 }
 
