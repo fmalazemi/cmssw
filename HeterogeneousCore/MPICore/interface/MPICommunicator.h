@@ -21,6 +21,8 @@ public:
 MPI_Comm mainCommunicator() const ; 
 MPI_Comm controlCommunicator() const; 
 MPI_Comm dataCommunicator() const; 
+std::tuple<int, int> rankAndSize(MPI_Comm) const; 
+
 
 private:
 

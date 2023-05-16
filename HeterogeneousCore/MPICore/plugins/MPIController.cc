@@ -16,9 +16,12 @@
 //
 //
 
-#include <memory>
+#include<memory>
 #include<iostream> 
-#include <string> 
+#include<string> 
+#include<tuple>
+
+
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
@@ -29,11 +32,10 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-#include <chrono>
-#include <thread>
+
+
 #include "api.h"
 #include "messages.h"
-#include<atomic>
 
 
 
@@ -57,9 +59,9 @@ private:
 
   // ----------member data ---------------------------
   edm::StreamID sid_ = edm::StreamID::invalidStreamID(); 
-  //std::optional<MPICommunicator> comm_; 
   MPISender link; 
   edm::EDPutTokenT<MPIToken> token_; 
+  int MPISourceRank_; 
 
 };
 
@@ -86,7 +88,10 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-  link = MPISender(MPICommPTR->controlCommunicator(), 0); 
+  edm::LogAbsolute log("MPI");
+  
+  link = MPISender(MPICommPTR->controlCommunicator(), MPISourceRank_); 
+  log<<"MPIController::MPIController is up. Link to MPISource "<<MPISourceRank_<<" is Set."; 
 }
 
 MPIController::~MPIController() {
@@ -94,7 +99,8 @@ MPIController::~MPIController() {
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
-	std::cout<<"Controller dies\n"; 
+  edm::LogAbsolute log("MPI");
+  log<<"MPIController::~MPIController()."; 
 }
 
 //
@@ -103,26 +109,29 @@ MPIController::~MPIController() {
 
 std::unique_ptr<MPICommunicator>  MPIController::initializeGlobalCache(edm::ParameterSet const& iConfig) {
 
-	EDM_MPI_build_types();
+	edm::LogAbsolute log("MPI");
+	
+	
+	EDM_MPI_build_types(); //Move to MPIServices
         edm::Service<MPIService> service;
-
         service->required();
         std::unique_ptr<MPICommunicator> MPICommPTR = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
 
         MPICommPTR->connect();
         MPICommPTR->splitCommunicator(); 	
-//	EDM_MPI_Empty_t buffer; 
-//	std::cout<<"We are here\n";
-//	MPI_Send(&buffer, 1, EDM_MPI_Empty, 0, EDM_MPI_Connect, MPICommPTR->controlCommunicator()); 
 
-        std::cout<<"Controller is UP and Connected\n";
- 
+	auto [mainRank, mainSize] = MPICommPTR->rankAndSize(MPICommPTR->mainCommunicator()); 
+	auto [contRank, contSize] = MPICommPTR->rankAndSize(MPICommPTR->controlCommunicator()); 
+	auto [dataRank, dataSize] = MPICommPTR->rankAndSize(MPICommPTR->dataCommunicator()); 
+    
+        log<<"MPIController::initializeGlobalCache. Connected to MPISource (Main rank="<<mainRank<<", size="<<mainSize<<", Controller rank="<<contRank<<", size="<<contSize<<", Data rank="<<dataRank<<", size="<<dataSize<<")"; 
+	//FIXME: set MPI Source and Rank here; 
         return MPICommPTR;
 }
 
 void MPIController::globalEndJob(MPICommunicator const* MPICommPTR) {
-      //std::cout <<"Number of events seen "<<iMPICommunicator->value<<std::endl;
-   }
+edm::LogAbsolute("MPI")<<"MPIController::globalEndJob";
+}
 
 
 
@@ -143,13 +152,18 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
-  printf("MPIController::produce, Sid = %d\n", sid_.value()); 
-  printf("iEvent = %d\n", (int)(iEvent.id().event())); 
+  edm::LogAbsolute log("MPI");
+
   MPICommunicator const * MPICommPTR = globalCache();  
-  int tagID = (int)(iEvent.id().event()); 
+  //FIXME: tagID = Stream id is temp solution. 
+  int tagID = (int)(iEvent.id().event());  
+
+  //Event will be sent through Control communicator
   link.sendEvent(tagID, iEvent.eventAuxiliary());
+
   iEvent.emplace(token_, MPICommPTR, tagID, 0 ); 
 
+  log<<"MPIController::produce. Starting Event "<<iEvent.id().event()<<" on Stream "<<sid_.value(); 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
@@ -157,17 +171,17 @@ void MPIController::beginStream(edm::StreamID sid) {
  // please remove this method if not needed
  sid_ = sid;
  // link.sendConnect(sid_);
- printf("MPIController::beginStream, Sid = %d\n", sid_.value());
- link.sendBeginStream(sid_);
+ link.sendBeginStream(sid_.value());
+ edm::LogAbsolute("MPI")<<"MPIController::beginStream, stream = "<<sid_.value()<<".";
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
 void MPIController::endStream() {
-  printf("MPIController::endStream, Sid = %d\n", sid_.value());
   // signal the end stream
-  link.sendEndStream(sid_);
+  link.sendEndStream(sid_.value());
   // signal the disconnection
-  link.sendDisconnect(sid_);
+  link.sendDisconnect(sid_.value());
+  edm::LogAbsolute("MPI")<<"MPIController::endStream, stream = "<<sid_.value()<<".";
 }
 
 // ------------ method called when starting to processes a run  ------------
@@ -175,12 +189,14 @@ void MPIController::endStream() {
 void
 MPIController::beginRun(edm::Run const& run, edm::EventSetup const& setup)
 {
-	printf("MPIController::beginRun, Sid = %d\n", sid_.value());
+	edm::LogAbsolute log("MPI");
 	auto aux = run.runAuxiliary(); 
 	aux.setProcessHistoryID(run.processHistory().id()); 
-	link.sendBeginRun(sid_, aux); 
+	link.sendBeginRun(sid_.value(), aux); 
+	edm::LogAbsolute("MPI")<<"MPIController::beginRun. Signal Sent (stream = "<<sid_.value()<<")."; 
 	//transmit the ProcessHistory
-	link.sendSerializedProduct(sid_, run.processHistory()) ; 
+	link.sendSerializedProduct(sid_.value(), run.processHistory()) ; 
+	edm::LogAbsolute("MPI")<<"MPIController::beginRun. sendSerializedProduct Sent (stream = "<<sid_.value()<<")."; 
 }
 
 
@@ -189,10 +205,10 @@ MPIController::beginRun(edm::Run const& run, edm::EventSetup const& setup)
 void
 MPIController::endRun(edm::Run const& run, edm::EventSetup const& setup)
 {
-	printf("MPIController::endRun, Sid = %d\n", sid_.value());
 	auto aux = run.runAuxiliary(); 
 	aux.setProcessHistoryID(run.processHistory().id()); 
-	link.sendEndRun(sid_, aux); 
+	link.sendEndRun(sid_.value(), aux); 
+	edm::LogAbsolute("MPI")<<"MPIController::endRun, stream = "<<sid_.value()<<".";
 }
 
 
@@ -201,10 +217,10 @@ MPIController::endRun(edm::Run const& run, edm::EventSetup const& setup)
 void
 MPIController::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
 {
-	printf("MPIController::beginLuminosityBlock, Sid = %d\n", sid_.value());
 	auto aux = lumi.luminosityBlockAuxiliary(); 
 	aux.setProcessHistoryID(lumi.processHistory().id()); 
-	link.sendBeginLuminosityBlock(sid_, aux); 
+	link.sendBeginLuminosityBlock(sid_.value(), aux); 
+	edm::LogAbsolute("MPI")<<"MPIController::beginLuminosityBlock. stream = "<<sid_.value()<<"."; 
 	
 }
 
@@ -217,7 +233,8 @@ MPIController::endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSe
 	printf("MPIController::endLuminosityBlock, Sid = %d\n", sid_.value());
 	auto aux = lumi.luminosityBlockAuxiliary(); 
 	aux.setProcessHistoryID(lumi.processHistory().id()); 
-	link.sendEndLuminosityBlock(sid_, aux); 
+	link.sendEndLuminosityBlock(sid_.value(), aux); 
+	edm::LogAbsolute("MPI")<<"MPIController::endLuminosityBlock, stream = "<<sid_.value()<<".";
 }
 
 

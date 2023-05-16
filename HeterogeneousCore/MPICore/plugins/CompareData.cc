@@ -18,6 +18,8 @@
 
 // system include files
 #include <memory>
+#include<vector>
+#include <sstream>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -28,10 +30,6 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
-#include<vector>
-#include <sstream>
-#include <algorithm>
-  #include <typeinfo>
 
 //
 // class declaration
@@ -39,20 +37,6 @@
 //
 //
 
-/******************
- * MPI Begin
- * Note: For testing purposes we assume Sender will try to find the received (which is lanuched manually at the moment)
- ******************/
-#include<iostream>
-#include<mpi.h>
-#include<cstdlib> 
-#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include<string> 
-#include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-/******************
- * MPI end
- ******************/
 
 class CompareData : public edm::stream::EDProducer<>{
 public:
@@ -65,7 +49,7 @@ public:
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
-  void endStream() override;
+  //void endStream() override;
 
   //void beginRun(edm::Run const&, edm::EventSetup const&) override;
   //void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -75,22 +59,13 @@ private:
   // ----------member data ---------------------------
  //MPICommunicator* x; 
  edm::EDGetTokenT<std::vector<int>> sourceData_; 
-
  edm::EDGetTokenT<std::vector<int>> controllerData_; 
- //add tag var 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
 //
 // constants, enums and typedefs
 //
-/******************
- * MPI Begin
- ******************/
-
-
-
-/*********** MPI END ***********/
 
 //
 // static data member definitions
@@ -145,11 +120,12 @@ void CompareData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   std::vector<int> c_data = iEvent.get(controllerData_); 
   std::sort(c_data.begin(), c_data.end());
   
-  if(c_data.size() == s_data.size()); 
+
+  assert(c_data.size() == s_data.size()); 
   for(std::size_t i = 0; i < c_data.size(); i++){
 	  assert(c_data[i] == s_data[i]);
   }
-  printf("Event %d, Stream %d, The data are equal\n", (int)(iEvent.id().event()), sid_.value()); 
+  edm::LogAbsolute("MPI")<<"(CompareData::produce, (Stream = "<<sid_.value()<<", Event = "<<iEvent.id().event()<<") Data are Equal"; 
 
 
 
@@ -163,12 +139,14 @@ void CompareData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 void CompareData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
   sid_ = stream;
+  edm::LogAbsolute("MPI")<<"CompareData::beginStream (Stream = "<<sid_.value()<<".";
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
-void CompareData::endStream() {
+/*void CompareData::endStream() {
+	
   // please remove this method if not needed
-}
+}*/
 
 // ------------ method called when starting to processes a run  ------------
 /*

@@ -18,16 +18,19 @@
 
 // system include files
 #include <memory>
+#include <sstream> 
+#include<string> 
+#include<vector>
+
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
-
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
+#include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
 
 //
 // class declaration
@@ -35,21 +38,6 @@
 //
 //
 
-/******************
- * MPI Begin
- * Note: For testing purposes we assume Sender will try to find the received (which is lanuched manually at the moment)
- ******************/
-#include<iostream>
-#include<mpi.h>
-#include<cstdlib> 
-#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include<string> 
-#include<vector>
-#include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-/******************
- * MPI end
- ******************/
 
 
 class MPIRecv : public edm::stream::EDProducer<> {
@@ -62,7 +50,7 @@ public:
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
-  void endStream() override;
+  //void endStream() override;
 
   //void beginRun(edm::Run const&, edm::EventSetup const&) override;
   //void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -70,7 +58,6 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- //MPICommunicator* x; 
  edm::EDGetTokenT<MPIToken> communicatorToken_; 
  edm::EDPutTokenT<std::vector<int>> outData_; 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
@@ -79,13 +66,6 @@ private:
 //
 // constants, enums and typedefs
 //
-/******************
- * MPI Begin
- ******************/
-
-
-
-/*********** MPI END ***********/
 
 //
 // static data member definitions
@@ -107,25 +87,18 @@ MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
+  edm::LogAbsolute log("MPI");
 
-
-  //************* MPI Begin *****************
-	std::cout<<"MPI Recv is up\n";
-  //************* MPI END ******************
+  log<<"MPIRecv::MPIRecv is up."; 
 	
 }
-
+     
 MPIRecv::~MPIRecv() {
   // do anything here that needs to be done at destruction time
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
 
-
-  //**************** MPI Begin ****************
-  //MPI_Finalize(); 
- 
-  //**************** MPI END *****************
 }
 
 //
@@ -148,48 +121,41 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
- 
-
-  //****************** MPI Begin) *****************
-  MPIToken tokenInfo = iEvent.get(communicatorToken_);
-  const MPICommunicator* MPICommPTR = tokenInfo.token;   
-  MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-  int tagID = tokenInfo.stream; 
-  int source = tokenInfo.source; 
-  printf("Streeeeeeeeem and tagID = %d %d\n", sid_.value(), tagID); 
-
-  std::cout<<"******************  RECV (sid "<<sid_.value()<<") waiting for send to connect\n";
-  MPI_Status status;
   
-  MPI_Message message;
-  MPI_Mprobe(MPI_ANY_SOURCE, tagID, dataComm_, &message, &status);
+  
+  edm::LogAbsolute log("MPI");
 
+
+  MPIToken tokenData = iEvent.get(communicatorToken_);
+
+  const MPICommunicator* MPICommPTR = tokenData.token;   
+  MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
+  
+  int tagID = tokenData.stream; 
+  int source = tokenData.source; 
+  
+  log<<"MPIRecv::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") waiting for Data";
+
+  MPI_Status status;
+  MPI_Message message;
+
+  MPI_Mprobe(MPI_ANY_SOURCE, tagID, dataComm_, &message, &status);
 
   int dataSize; 
   MPI_Get_count(&status, MPI_INT, &dataSize); 
-  printf("DataSize = %d\n", dataSize); 
+  
   std::vector<int> data ;
   data.resize(dataSize);
+  
   MPI_Mrecv(&data[0], dataSize, MPI_INT, &message,  &status); 
-  /* 
-  std::vector<int> data ;
-  data.resize(10);
-  int x; 
- // MPI_Sendrecv(&x, 1, MPI_INT, 0, (int)(iEvent.id().event()), &data[0], 10, MPI_INT, 0, (int)(iEvent.id().event()), dataComm_, &status);
- */
-/*
-  int dummyInt_; 
-  MPI_Recv(&dummyInt_, 1, MPI_INT, MPI_ANY_SOURCE, 432, dataComm_, MPI_STATUS_IGNORE);
-  std::cout<<"___Received Data = "<<dummyInt_<<std::endl;
-*/
-  printf("data(sid %d) = ",sid_.value()); 
+  
+  std::stringstream ss; 
   for(int i : data){
-	 printf("%d ", i); 
+	 ss<<i<<" "; 
   }
-  printf("\n");  
-  std::cout<<"*********************  RECV: Receiver( StreamID "<<sid_.value()<<" got the message:\n >>>>>>>>>>>>>>>>>>>>>>>>> \n";
+  log<<"MPIRecv::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Received data from Source = "<<source<<" (size = "<<data.size()<<") = "<<ss.str();
+  
   iEvent.emplace(outData_, data);
-  //****************** MPI END ******************
 
 
 }
@@ -201,9 +167,10 @@ void MPIRecv::beginStream(edm::StreamID stream) {
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
-void MPIRecv::endStream() {
+/*void MPIRecv::endStream() {
   // please remove this method if not needed
 }
+*/
 
 // ------------ method called when starting to processes a run  ------------
 /*

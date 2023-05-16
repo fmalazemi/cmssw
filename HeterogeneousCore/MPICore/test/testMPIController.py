@@ -44,5 +44,5 @@ process.process_path = cms.Path(
 
 process.maxEvents.input = 1
 
-process.options.numberOfStreams = 1
-process.options.numberOfThreads = 3 
+process.options.numberOfStreams = 1 
+process.options.numberOfThreads = 2 

@@ -17,7 +17,13 @@
 //
 
 // system include files
-#include <memory>
+
+#include<memory>
+#include<sstream> 
+#include<vector>
+#include<algorithm>
+
+#include<iostream>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -28,10 +34,6 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/StreamID.h"
-#include<vector>
-#include <sstream>
-#include <algorithm>
-  #include <typeinfo>
 
 //
 // class declaration
@@ -39,20 +41,6 @@
 //
 //
 
-/******************
- * MPI Begin
- * Note: For testing purposes we assume Sender will try to find the received (which is lanuched manually at the moment)
- ******************/
-#include<iostream>
-#include<mpi.h>
-#include<cstdlib> 
-#include "HeterogeneousCore/MPIServices/interface/MPIService.h"
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include<string> 
-#include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-/******************
- * MPI end
- ******************/
 
 class SortData : public edm::stream::EDProducer<>{
 public:
@@ -65,7 +53,7 @@ public:
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
-  void endStream() override;
+  //void endStream() override;
 
   //void beginRun(edm::Run const&, edm::EventSetup const&) override;
   //void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -73,10 +61,8 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- //MPICommunicator* x; 
  edm::EDGetTokenT<std::vector<int>> inData_; 
  edm::EDPutTokenT<std::vector<int>> outData_; 
- //add tag var 
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
@@ -110,7 +96,7 @@ SortData::SortData(const edm::ParameterSet& iConfig):inData_{consumes(iConfig.ge
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-
+  edm::LogAbsolute("MPI")<<"SortData::SortData() is up.";
 	
 }
 
@@ -119,6 +105,7 @@ SortData::~SortData() {
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
+  edm::LogAbsolute("MPI")<<"SortData::~SortData()";
 }
 
 // ------------ method called to produce the data  ------------
@@ -139,17 +126,16 @@ void SortData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
-  //****************** MPI Begin *****************
   std::vector<int> data = iEvent.get(inData_); 
   std::sort(data.begin(), data.end());
-  printf("Sorted Data ---------> (Sid %d, event %d) in Data = ",sid_.value(), (int)iEvent.id().event()); 
+  
+  std::stringstream ss;
   for(int i : data){
-	  printf("%d ", i); 
+          ss<<i<<" ";
   }
-  printf(" <---------\n");
- 
+
+  edm::LogAbsolute("MPI")<<"SortData::produce (sid_ = "<<sid_.value()<<", Event = "<<iEvent.id().event()<<") Sorted Data = "<<ss.str(); 
   iEvent.emplace(outData_, data);
-  //****************** MPI END ******************
 
 
 
@@ -159,13 +145,15 @@ void SortData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 void SortData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
   sid_ = stream;
+  edm::LogAbsolute("MPI")<<"SortData::beginStream (Stream = "<<sid_.value()<<")."; 
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
+/*
 void SortData::endStream() {
   // please remove this method if not needed
 }
-
+*/
 // ------------ method called when starting to processes a run  ------------
 /*
 void

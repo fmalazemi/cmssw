@@ -21,7 +21,7 @@
 #include <ctime>
 #include <cstdlib>
 #include<vector>
-
+#include<sstream> 
 
 
 // user include files
@@ -42,7 +42,7 @@ public:
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
-  void endStream() override;
+  //void endStream() override;
 
   //void beginRun(edm::Run const&, edm::EventSetup const&) override;
   //void endRun(edm::Run const&, edm::EventSetup const&) override;
@@ -85,7 +85,7 @@ GenerateDummyData::GenerateDummyData(const edm::ParameterSet& iConfig):dataToken
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-
+  edm::LogAbsolute("MPI")<<"GenerateDummyData::GenerateDummyData().";
 	
 }
 
@@ -94,7 +94,7 @@ GenerateDummyData::~GenerateDummyData() {
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
-
+  edm::LogAbsolute("MPI")<<"GenerateDummyData::~GenerateDummyData().";
 
 }
 //
@@ -121,15 +121,18 @@ void GenerateDummyData::produce(edm::Event& iEvent, const edm::EventSetup& iSetu
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
+  edm::LogAbsolute log("MPI"); 
   std::srand((int)iEvent.id().event()); //std::time(0));
   data_.clear();
-  printf("GenerateDummyData::produce --> Stream  = %d\n",sid_.value());
   for(int i = 0; i < 10; i++){
 	data_.push_back(std::rand()%10000);
   }
-  printf("Data : "); 
-  for(int i : data_) printf("%d ", i); 
-  printf("\n"); 
+  std::stringstream ss;
+  for(int i : data_){
+          ss<<i<<" ";
+  }
+  log<<"GenerateDummyData::produce (sid_ = "<<sid_.value()<<", Event = "<<iEvent.id().event()<<") Data = "<<ss.str();
+
   iEvent.emplace(dataToken_, data_);
 
 }
@@ -138,14 +141,15 @@ void GenerateDummyData::produce(edm::Event& iEvent, const edm::EventSetup& iSetu
 void GenerateDummyData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
   sid_ = stream; 
-  printf("GenerateDummyData::beginStream: Stream %d\n", sid_.value()) ;
+  edm::LogAbsolute("MPI")<<"GenerateDummyData::beginStream: Stream = "<< sid_.value() ;
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
+/*
 void GenerateDummyData::endStream() {
   // please remove this method if not needed
 }
-
+*/
 // ------------ method called when starting to processes a run  ------------
 /*
 void
