@@ -9,8 +9,7 @@
 
 
 MPICommunicator::MPICommunicator(std::string serviceName):serviceName_{std::move(serviceName)}{
-       edm::LogInfo log("MPIService");
-       log<<"MPICommunicator::MPICommunicator() is UP.";
+       edm::LogAbsolute("MPI")<<"MPICommunicator::MPICommunicator() is UP.";
 }
 
 
@@ -20,18 +19,17 @@ MPICommunicator::~MPICommunicator(){
        MPI_Comm_disconnect(&mainComm_);
        MPI_Info port_info;
        MPI_Info_create(&port_info);
-       MPI_Info_set(port_info, "ompi_global_scope", "true");
-       MPI_Info_set(port_info, "ompi_unique", "true");
+       //MPI_Info_set(port_info, "ompi_global_scope", "true");
+       //MPI_Info_set(port_info, "ompi_unique", "true");
        MPI_Unpublish_name(serviceName_.c_str(), port_info, port_);
        MPI_Close_port(port_);
 
-       edm::LogInfo log("MPIService");	
-       log<<"MPICommunicator::~MPICommunicator()";
+       edm::LogAbsolute("MPI")<<"MPICommunicator::~MPICommunicator()";
 }
 
 void MPICommunicator::connect(){
 
-	edm::LogInfo log("MPIService");
+	edm::LogAbsolute log("MPI");
 	log<<"MPICommunicator::connect(). Lookup name "<<serviceName_<<"\n"; 
         MPI_Lookup_name( serviceName_.c_str(), MPI_INFO_NULL, port_);
         MPI_Comm_connect( port_, MPI_INFO_NULL, 0, MPI_COMM_WORLD, &mainComm_);
@@ -40,7 +38,7 @@ void MPICommunicator::connect(){
 }
 
 void MPICommunicator::publish_and_listen(){
-       edm::LogInfo log("MPIService");
+       edm::LogInfo log("MPI");
 	
        //publish
        MPI_Open_port(MPI_INFO_NULL, port_);
@@ -66,7 +64,7 @@ void MPICommunicator::splitCommunicator(){
 	
         auto [cRank, cSize] = rankAndSize(controlComm_);	
         auto [dRank, dSize] = rankAndSize(dataComm_);	
-        edm::LogInfo log("MPIService");
+        edm::LogInfo log("MPI");
         log<<"MPICommunicator::splitCommunicator(). Control Rank= "<<cRank<<" and size= "<<cSize<<", Data Rank= "<<dRank<<", size= "<<dSize;
 
 }

@@ -122,7 +122,6 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   
-  printf("______________HE WE ALREADY HERE\n");  
   edm::LogAbsolute log("MPI");
 
 

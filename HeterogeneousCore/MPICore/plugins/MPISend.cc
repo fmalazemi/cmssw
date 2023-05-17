@@ -62,6 +62,7 @@ private:
  edm::EDGetTokenT<MPIToken> communicatorToken_; 
  edm::EDGetTokenT<std::vector<int>> inData_; 
  edm::EDPutTokenT<std::vector<int>> outData_; 
+ edm::EDPutTokenT<MPIToken> comOut_;
  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
@@ -76,7 +77,7 @@ private:
 //
 // constructors and destructor
 //
-MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("communicator"))},inData_{consumes(iConfig.getParameter<edm::InputTag>("incomingData"))}{
+MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("communicator"))},inData_{consumes(iConfig.getParameter<edm::InputTag>("incomingData"))}, comOut_{produces()}{
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -155,10 +156,10 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	  ss<<i<<" "; 
   }
   log<<"MPISend::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Received Data = "<<ss.str()<<"\n"; 
-  MPI_Send(&data[0], (int)data.size(), MPI_INT, dest, tagID, dataComm_);  
+  MPI_Ssend(&data[0], (int)data.size(), MPI_INT, dest, tagID, dataComm_);  
   log<<"MPISend::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Sent Data to "<<dest; 
 
-
+ iEvent.emplace(comOut_, tokenData); 
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
