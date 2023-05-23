@@ -862,6 +862,7 @@ namespace edm {
     //For now, do nothing with InputSource::IsSynchronize
     do {
       itemType = input_->nextItemType();
+      std::cout<<"Item type "<<itemType<<"\n"; 
     } while (itemType == InputSource::IsSynchronize);
 
     lastSourceTransition_ = itemType;
