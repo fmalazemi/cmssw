@@ -34,6 +34,7 @@ process.compare = cms.EDProducer('CompareData', sourceData=cms.InputTag("recv"),
 
 process.producer_task = cms.Task(process.controller)
 
+#process.process_path = cms.Path(process.controller)
 process.process_path = cms.Path(cms.wait(process.generator+ process.sender + process.recv)+process.compare, process.producer_task)
 
 #process.process_path = cms.Path(process.generator+ process.sender , process.producer_task)
@@ -42,7 +43,7 @@ process.process_path = cms.Path(cms.wait(process.generator+ process.sender + pro
 
 #process.output_path = cms.EndPath(process.output)
 
-process.maxEvents.input = 10
+process.maxEvents.input = 10 
 
-process.options.numberOfStreams = 10 
+process.options.numberOfStreams = 1 
 process.options.numberOfThreads = 1 

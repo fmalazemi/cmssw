@@ -16,12 +16,10 @@
 //
 //
 
-#include<memory>
-#include<iostream> 
-#include<string> 
-#include<tuple>
-
-
+#include <memory>
+#include <iostream>
+#include <string>
+#include <tuple>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
@@ -33,20 +31,19 @@
 #include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
 
-
 #include "api.h"
 #include "messages.h"
 #include "conversion.h"
 
-
 class MPIEmptySource : public edm::stream::EDProducer<edm::GlobalCache<MPICommunicator>> {
 public:
-  explicit MPIEmptySource(const edm::ParameterSet&, MPICommunicator const *);
+  explicit MPIEmptySource(const edm::ParameterSet&, MPICommunicator const*);
   ~MPIEmptySource() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
   static std::unique_ptr<MPICommunicator> initializeGlobalCache(edm::ParameterSet const&);
-  static void globalEndJob(MPICommunicator const* iMPICommunicator); 
+  static void globalEndJob(MPICommunicator const* iMPICommunicator);
+
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -58,12 +55,11 @@ private:
   void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
-  edm::StreamID sid_ = edm::StreamID::invalidStreamID(); 
-  MPISender link; 
-  edm::EDPutTokenT<MPIToken> token_; 
-  int MPISourceRank_; 
+  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
+  MPISender link;
+  edm::EDPutTokenT<MPIToken> token_;
+  int MPISourceRank_;
   MPI_Comm controlComm_ = MPI_COMM_NULL;
-
 };
 
 //
@@ -77,7 +73,8 @@ private:
 //
 // constructors and destructor
 //
-MPIEmptySource::MPIEmptySource(const edm::ParameterSet& iConfig, MPICommunicator const* MPICommPTR):token_{produces()} {
+MPIEmptySource::MPIEmptySource(const edm::ParameterSet& iConfig, MPICommunicator const* MPICommPTR)
+    : token_{produces()} {
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -90,9 +87,9 @@ MPIEmptySource::MPIEmptySource(const edm::ParameterSet& iConfig, MPICommunicator
   */
   //now do what ever other initialization is needed
   edm::LogAbsolute log("MPI");
-  controlComm_ = MPICommPTR->controlCommunicator(); 
-  link = MPISender(MPICommPTR->controlCommunicator(), MPISourceRank_); 
-  log<<"MPIEmptySource::MPIEmptySource is up. Link to MPISource "<<MPISourceRank_<<" is Set."; 
+  controlComm_ = MPICommPTR->controlCommunicator();
+  link = MPISender(MPICommPTR->controlCommunicator(), MPISourceRank_);
+  log << "MPIEmptySource::MPIEmptySource is up. Link to MPISource " << MPISourceRank_ << " is Set.";
 }
 
 MPIEmptySource::~MPIEmptySource() {
@@ -101,40 +98,38 @@ MPIEmptySource::~MPIEmptySource() {
   //
   // please remove this method altogether if it would be left empty
   edm::LogAbsolute log("MPI");
-  log<<"MPIEmptySource::~MPIEmptySource()."; 
+  log << "MPIEmptySource::~MPIEmptySource().";
 }
 
 //
 // member functions
 //
 
-std::unique_ptr<MPICommunicator>  MPIEmptySource::initializeGlobalCache(edm::ParameterSet const& iConfig) {
+std::unique_ptr<MPICommunicator> MPIEmptySource::initializeGlobalCache(edm::ParameterSet const& iConfig) {
+  edm::LogAbsolute log("MPI");
 
-	edm::LogAbsolute log("MPI");
-	
-	
-	EDM_MPI_build_types(); //Move to MPIServices
-        edm::Service<MPIService> service;
-        service->required();
-        std::unique_ptr<MPICommunicator> MPICommPTR = std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
-  	MPICommPTR->publish_and_listen();
-        MPICommPTR->splitCommunicator(); 	
+  EDM_MPI_build_types();  //Move to MPIServices
+  edm::Service<MPIService> service;
+  service->required();
+  std::unique_ptr<MPICommunicator> MPICommPTR =
+      std::make_unique<MPICommunicator>(iConfig.getUntrackedParameter<std::string>("service"));
+  MPICommPTR->publish_and_listen();
+  MPICommPTR->splitCommunicator();
 
-	auto [mainRank, mainSize] = MPICommPTR->rankAndSize(MPICommPTR->mainCommunicator()); 
-	auto [contRank, contSize] = MPICommPTR->rankAndSize(MPICommPTR->controlCommunicator()); 
-	auto [dataRank, dataSize] = MPICommPTR->rankAndSize(MPICommPTR->dataCommunicator()); 
-    
-        log<<"MPIEmptySource::initializeGlobalCache. Connected to MPISource (Main rank="<<mainRank<<", size="<<mainSize<<", Controller rank="<<contRank<<", size="<<contSize<<", Data rank="<<dataRank<<", size="<<dataSize<<")"; 
-	//FIXME: set MPI Source and Rank here; 
-        return MPICommPTR;
+  auto [mainRank, mainSize] = MPICommPTR->rankAndSize(MPICommPTR->mainCommunicator());
+  auto [contRank, contSize] = MPICommPTR->rankAndSize(MPICommPTR->controlCommunicator());
+  auto [dataRank, dataSize] = MPICommPTR->rankAndSize(MPICommPTR->dataCommunicator());
+
+  log << "MPIEmptySource::initializeGlobalCache. Connected to MPISource (Main rank=" << mainRank
+      << ", size=" << mainSize << ", Controller rank=" << contRank << ", size=" << contSize
+      << ", Data rank=" << dataRank << ", size=" << dataSize << ")";
+  //FIXME: set MPI Source and Rank here;
+  return MPICommPTR;
 }
 
 void MPIEmptySource::globalEndJob(MPICommunicator const* MPICommPTR) {
-edm::LogAbsolute("MPI")<<"MPIEmptySource::globalEndJob";
+  edm::LogAbsolute("MPI") << "MPIEmptySource::globalEndJob";
 }
-
-
-
 
 // ------------ method called to produce the data  ------------
 void MPIEmptySource::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -154,8 +149,8 @@ void MPIEmptySource::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   */
   edm::LogAbsolute log("MPI");
 
-  MPICommunicator const * MPICommPTR = globalCache();  
-  //FIXME: tagID = Stream id is temp solution. 
+  MPICommunicator const* MPICommPTR = globalCache();
+  //FIXME: tagID = Stream id is temp solution.
 
   //Event will be sent through Control communicator
 
@@ -164,124 +159,106 @@ void MPIEmptySource::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) 
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_ProcessEvent, controlComm_, &message, MPI_STATUS_IGNORE);
   edm::EventAuxiliary eventAuxiliary;
   auto [status, stream] = link.receiveEvent(eventAuxiliary, message);
-  int tagID = stream;  
-  log<<"EDM_MPI_ProcessEvent (stream = "<< iEvent.id().event()<<" Stream = "<<sid_.value()<<", source = "<<status.MPI_SOURCE<<", received Tag = "<<tagID<<").";
-  iEvent.emplace(token_, MPICommPTR, tagID, 0 ); 
+  int tagID = stream;
+  log << "EDM_MPI_ProcessEvent (stream = " << iEvent.id().event() << " Stream = " << sid_.value()
+      << ", source = " << status.MPI_SOURCE << ", received Tag = " << tagID << ").";
+  iEvent.emplace(token_, MPICommPTR, tagID, 0);
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPIEmptySource::beginStream(edm::StreamID sid) {
- // please remove this method if not needed
- edm::LogAbsolute log("MPI");
- sid_ = sid;
+  // please remove this method if not needed
+  edm::LogAbsolute log("MPI");
+  sid_ = sid;
 
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_BeginStream, controlComm_, &message, &status);
 
- EDM_MPI_Empty_t buffer;
- MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
- log<<"EDM_MPI_BeginStream (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+  EDM_MPI_Empty_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
+  log << "EDM_MPI_BeginStream (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
 void MPIEmptySource::endStream() {
-
- 
   edm::LogAbsolute log("MPI");
 
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_EndStream, controlComm_, &message, &status);
- 
-  EDM_MPI_Empty_t buffer;
-      MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
-      log<<"EDM_MPI_EndStream (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+  EDM_MPI_Empty_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
+
+  log << "EDM_MPI_EndStream (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
 }
 
 // ------------ method called when starting to processes a run  ------------
 
-void
-MPIEmptySource::beginRun(edm::Run const& run, edm::EventSetup const& setup)
-{
-	edm::LogAbsolute log("MPI");
+void MPIEmptySource::beginRun(edm::Run const& run, edm::EventSetup const& setup) {
+  edm::LogAbsolute log("MPI");
 
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_BeginRun, controlComm_, &message, &status);
-EDM_MPI_RunAuxiliary_t buffer;	
-        MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
-	log<<"EDM_MPI_BeginRun (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+  EDM_MPI_RunAuxiliary_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
+  log << "EDM_MPI_BeginRun (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
 
-      // receive the ProcessHistory
-      //MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
-      MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
-      int size;
-      MPI_Get_count(&status, MPI_BYTE, &size);
-      char* b = new char[size];
-      MPI_Mrecv(b, size, MPI_BYTE, &message, &status);
-      log<<"EDM_MPI_SendSerializedProduct (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
-
-	
+  // receive the ProcessHistory
+  //MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
+  MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
+  int size;
+  MPI_Get_count(&status, MPI_BYTE, &size);
+  char* b = new char[size];
+  MPI_Mrecv(b, size, MPI_BYTE, &message, &status);
+  log << "EDM_MPI_SendSerializedProduct (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
 }
-
 
 // ------------ method called when ending the processing of a run  ------------
 
-void
-MPIEmptySource::endRun(edm::Run const& run, edm::EventSetup const& setup)
-{
-edm::LogAbsolute log("MPI");
+void MPIEmptySource::endRun(edm::Run const& run, edm::EventSetup const& setup) {
+  edm::LogAbsolute log("MPI");
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_EndRun, controlComm_, &message, &status);
 
-      EDM_MPI_RunAuxiliary_t buffer;
-      MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
+  EDM_MPI_RunAuxiliary_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
 
-      log<<"EDM_MPI_EndRun (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
-
-
+  log << "EDM_MPI_EndRun (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
 }
-
 
 // ------------ method called when starting to processes a luminosity block  ------------
 
-void
-MPIEmptySource::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
-{
-edm::LogAbsolute log("MPI");
+void MPIEmptySource::beginLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup) {
+  edm::LogAbsolute log("MPI");
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_BeginLuminosityBlock, controlComm_, &message, &status);
-// receive the LuminosityBlockAuxiliary
-      EDM_MPI_LuminosityBlockAuxiliary_t buffer;
-      MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
+  // receive the LuminosityBlockAuxiliary
+  EDM_MPI_LuminosityBlockAuxiliary_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
 
-      log<<"EDM_MPI_BeginLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
-      // signal a new lumisection
-	
+  log << "EDM_MPI_BeginLuminosityBlock (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
+  // signal a new lumisection
 }
-
 
 // ------------ method called when ending the processing of a luminosity block  ------------
 
-void
-MPIEmptySource::endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup)
-{
-edm::LogAbsolute log("MPI");
+void MPIEmptySource::endLuminosityBlock(edm::LuminosityBlock const& lumi, edm::EventSetup const& setup) {
+  edm::LogAbsolute log("MPI");
   MPI_Status status;
   MPI_Message message;
   MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_EndLuminosityBlock, controlComm_, &message, &status);
 
-      // receive the LuminosityBlockAuxiliary
-      EDM_MPI_LuminosityBlockAuxiliary_t buffer;
-      MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
-      log<<"EDM_MPI_EndLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
-      // nothing else to do
+  // receive the LuminosityBlockAuxiliary
+  EDM_MPI_LuminosityBlockAuxiliary_t buffer;
+  MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
+  log << "EDM_MPI_EndLuminosityBlock (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
+  // nothing else to do
 }
-
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void MPIEmptySource::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {

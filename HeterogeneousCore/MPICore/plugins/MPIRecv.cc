@@ -18,10 +18,9 @@
 
 // system include files
 #include <memory>
-#include <sstream> 
-#include<string> 
-#include<vector>
-
+#include <sstream>
+#include <string>
+#include <vector>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -37,8 +36,6 @@
 //
 //
 //
-
-
 
 class MPIRecv : public edm::stream::EDProducer<> {
 public:
@@ -58,9 +55,9 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- edm::EDGetTokenT<MPIToken> communicatorToken_; 
- edm::EDPutTokenT<std::vector<int>> outData_; 
- edm::StreamID sid_ = edm::StreamID::invalidStreamID();
+  edm::EDGetTokenT<MPIToken> communicatorToken_;
+  edm::EDPutTokenT<std::vector<int>> outData_;
+  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
 //
@@ -74,8 +71,8 @@ private:
 //
 // constructors and destructor
 //
-MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("controller"))},outData_{produces()}{
-
+MPIRecv::MPIRecv(const edm::ParameterSet& iConfig)
+    : communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("controller"))}, outData_{produces()} {
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -89,16 +86,14 @@ MPIRecv::MPIRecv(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
   //now do what ever other initialization is needed
   edm::LogAbsolute log("MPI");
 
-  log<<"MPIRecv::MPIRecv is up."; 
-	
+  log << "MPIRecv::MPIRecv is up.";
 }
-     
+
 MPIRecv::~MPIRecv() {
   // do anything here that needs to be done at destruction time
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
-
 }
 
 //
@@ -121,48 +116,47 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //Read SetupData from the SetupRecord in the EventSetup
   SetupData& setup = iSetup.getData(setupToken_);
   */
-  
-  edm::LogAbsolute log("MPI");
 
+  edm::LogAbsolute log("MPI");
 
   MPIToken tokenData = iEvent.get(communicatorToken_);
 
-  const MPICommunicator* MPICommPTR = tokenData.token;   
+  const MPICommunicator* MPICommPTR = tokenData.token;
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-  
-  int tagID = tokenData.stream; 
-  int source = tokenData.source; 
-  
-  log<<"MPIRecv::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") waiting for Data";
+
+  int tagID = tokenData.stream;
+  int source = tokenData.source;
+
+  log << "MPIRecv::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
+      << ") waiting for Data";
 
   MPI_Status status;
   MPI_Message message;
 
   MPI_Mprobe(MPI_ANY_SOURCE, tagID, dataComm_, &message, &status);
 
-  int dataSize; 
-  MPI_Get_count(&status, MPI_INT, &dataSize); 
-  
-  std::vector<int> data ;
+  int dataSize;
+  MPI_Get_count(&status, MPI_INT, &dataSize);
+
+  std::vector<int> data;
   data.resize(dataSize);
-  
-  MPI_Mrecv(&data[0], dataSize, MPI_INT, &message,  &status); 
-  
-  std::stringstream ss; 
-  for(int i : data){
-	 ss<<i<<" "; 
+
+  MPI_Mrecv(&data[0], dataSize, MPI_INT, &message, &status);
+
+  std::stringstream ss;
+  for (int i : data) {
+    ss << i << " ";
   }
-  log<<"MPIRecv::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Received data from Source = "<<source<<" (size = "<<data.size()<<") = "<<ss.str();
-  
+  log << "MPIRecv::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
+      << ") Received data from Source = " << source << " (size = " << data.size() << ") = " << ss.str();
+
   iEvent.emplace(outData_, data);
-
-
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
-void MPIRecv::beginStream(edm::StreamID stream) { 
+void MPIRecv::beginStream(edm::StreamID stream) {
   sid_ = stream;
-edm::LogAbsolute("MPI")<<"MPIRecv::beginStream (Stream "<<sid_.value()<<").";
+  edm::LogAbsolute("MPI") << "MPIRecv::beginStream (Stream " << sid_.value() << ").";
   // please remove this method if not needed
 }
 

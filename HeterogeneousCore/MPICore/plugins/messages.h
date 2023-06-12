@@ -38,7 +38,7 @@ extern MPI_Datatype EDM_MPI_MessageType[EDM_MPI_MessageTagCount_];
 struct __attribute__((aligned(8))) EDM_MPI_Header_t {
   uint32_t messageTag;  // EDM_MPI_MessageTag
   uint32_t stream;      // edm::StreamID
-  uint32_t tagID ;      //
+  uint32_t tagID;       //
 };
 
 /* Empty EDM MPI message, used when only the header is needed

@@ -18,10 +18,10 @@
 
 // system include files
 #include <memory>
-#include<iostream>
-#include<mpi.h>
-#include<vector>
-#include<sstream>
+#include <iostream>
+#include <mpi.h>
+#include <vector>
+#include <sstream>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -32,22 +32,20 @@
 #include "FWCore/Utilities/interface/StreamID.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
 
-
 //
 // class declaration
 //
 //
 //
 
-
-class MPISend : public edm::stream::EDProducer<>{
+class MPISend : public edm::stream::EDProducer<> {
 public:
   explicit MPISend(const edm::ParameterSet&);
   ~MPISend() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
- //void acquire(edm::Event const&, edm::EventSetup const&, edm::WaitingTaskWithArenaHolder) override;
+  //void acquire(edm::Event const&, edm::EventSetup const&, edm::WaitingTaskWithArenaHolder) override;
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -59,11 +57,11 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- edm::EDGetTokenT<MPIToken> communicatorToken_; 
- edm::EDGetTokenT<std::vector<int>> inData_; 
- edm::EDPutTokenT<std::vector<int>> outData_; 
- edm::EDPutTokenT<MPIToken> comOut_;
- edm::StreamID sid_ = edm::StreamID::invalidStreamID();
+  edm::EDGetTokenT<MPIToken> communicatorToken_;
+  edm::EDGetTokenT<std::vector<int>> inData_;
+  edm::EDPutTokenT<std::vector<int>> outData_;
+  edm::EDPutTokenT<MPIToken> comOut_;
+  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
 //
@@ -73,11 +71,14 @@ private:
 //
 // static data member definitions
 //
-    
+
 //
 // constructors and destructor
 //
-MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("communicator"))},inData_{consumes(iConfig.getParameter<edm::InputTag>("incomingData"))}, comOut_{produces()}{
+MPISend::MPISend(const edm::ParameterSet& iConfig)
+    : communicatorToken_{consumes(iConfig.getParameter<edm::InputTag>("communicator"))},
+      inData_{consumes(iConfig.getParameter<edm::InputTag>("incomingData"))},
+      comOut_{produces()} {
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -92,8 +93,7 @@ MPISend::MPISend(const edm::ParameterSet& iConfig):communicatorToken_{consumes(i
 
   edm::LogAbsolute log("MPI");
 
-  log<<"MPISend::MPISend is up.";
-	
+  log << "MPISend::MPISend is up.";
 }
 
 MPISend::~MPISend() {
@@ -101,7 +101,6 @@ MPISend::~MPISend() {
   // (e.g. close files, deallocate resources etc.)
   //
   // please remove this method altogether if it would be left empty
-
 }
 
 //
@@ -118,11 +117,8 @@ MPISend::~MPISend() {
 }
 */
 
-
-
 // ------------ method called to produce the data  ------------
 void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
-
   using namespace edm;
   using namespace std;
   /* This is an event example
@@ -139,34 +135,35 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   SetupData& setup = iSetup.getData(setupToken_);
   */
   edm::LogAbsolute log("MPI");
-  
-  
-  MPIToken tokenData = iEvent.get(communicatorToken_); 
 
-  const MPICommunicator* MPICommPTR =tokenData.token; //replace with a better name  
+  MPIToken tokenData = iEvent.get(communicatorToken_);
+
+  const MPICommunicator* MPICommPTR = tokenData.token;  //replace with a better name
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
-  
-  int tagID = tokenData.stream; //replace with a better name
-  int dest = tokenData.source; //replace with a better name
 
-  std::vector<int> data = iEvent.get(inData_); 
-  
+  int tagID = tokenData.stream;  //replace with a better name
+  int dest = tokenData.source;   //replace with a better name
+
+  std::vector<int> data = iEvent.get(inData_);
+
   std::stringstream ss;
-  for(int i : data){
-	  ss<<i<<" "; 
+  for (int i : data) {
+    ss << i << " ";
   }
-  log<<"MPISend::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Received Data = "<<ss.str()<<"\n"; 
-  MPI_Ssend(&data[0], (int)data.size(), MPI_INT, dest, tagID, dataComm_);  
-  log<<"MPISend::produce (sid_ = "<<sid_.value()<<", tagID = "<<tagID<<", Event = "<<iEvent.id().event()<<") Sent Data to "<<dest; 
+  log << "MPISend::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
+      << ")  Data = " << ss.str() << "\n";
+  MPI_Send(&data[0], (int)data.size(), MPI_INT, dest, tagID, dataComm_);
+  log << "MPISend::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
+      << ") Sent Data to " << dest;
 
- iEvent.emplace(comOut_, tokenData); 
+  iEvent.emplace(comOut_, tokenData);
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPISend::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
   sid_ = stream;
-  edm::LogAbsolute("MPI")<<"MPISend::beginStream (Stream = "<<sid_.value()<<").";
+  edm::LogAbsolute("MPI") << "MPISend::beginStream (Stream = " << sid_.value() << ").";
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------

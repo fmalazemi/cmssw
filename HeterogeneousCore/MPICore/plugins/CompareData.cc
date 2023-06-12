@@ -18,7 +18,7 @@
 
 // system include files
 #include <memory>
-#include<vector>
+#include <vector>
 #include <sstream>
 
 // user include files
@@ -37,15 +37,14 @@
 //
 //
 
-
-class CompareData : public edm::stream::EDProducer<>{
+class CompareData : public edm::stream::EDProducer<> {
 public:
   explicit CompareData(const edm::ParameterSet&);
   ~CompareData() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
- //void acquire(edm::Event const&, edm::EventSetup const&, edm::WaitingTaskWithArenaHolder) override;
+  //void acquire(edm::Event const&, edm::EventSetup const&, edm::WaitingTaskWithArenaHolder) override;
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -57,10 +56,10 @@ private:
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
- //MPICommunicator* x; 
- edm::EDGetTokenT<std::vector<int>> sourceData_; 
- edm::EDGetTokenT<std::vector<int>> controllerData_; 
- edm::StreamID sid_ = edm::StreamID::invalidStreamID();
+  //MPICommunicator* x;
+  edm::EDGetTokenT<std::vector<int>> sourceData_;
+  edm::EDGetTokenT<std::vector<int>> controllerData_;
+  edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 };
 
 //
@@ -70,11 +69,13 @@ private:
 //
 // static data member definitions
 //
-    
+
 //
 // constructors and destructor
 //
-CompareData::CompareData(const edm::ParameterSet& iConfig):sourceData_{consumes(iConfig.getParameter<edm::InputTag>("sourceData"))},controllerData_{consumes(iConfig.getParameter<edm::InputTag>("controllerData"))}{
+CompareData::CompareData(const edm::ParameterSet& iConfig)
+    : sourceData_{consumes(iConfig.getParameter<edm::InputTag>("sourceData"))},
+      controllerData_{consumes(iConfig.getParameter<edm::InputTag>("controllerData"))} {
   //register your products
   /* Examples
   produces<ExampleData2>();
@@ -86,8 +87,6 @@ CompareData::CompareData(const edm::ParameterSet& iConfig):sourceData_{consumes(
   produces<ExampleData2,InRun>();
   */
   //now do what ever other initialization is needed
-
-	
 }
 
 CompareData::~CompareData() {
@@ -99,7 +98,6 @@ CompareData::~CompareData() {
 
 // ------------ method called to produce the data  ------------
 void CompareData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
-
   using namespace edm;
   using namespace std;
   /* This is an event example
@@ -117,29 +115,24 @@ void CompareData::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   */
   //****************** MPI Begin *****************
   std::vector<int> s_data = iEvent.get(sourceData_);
-  std::vector<int> c_data = iEvent.get(controllerData_); 
+  std::vector<int> c_data = iEvent.get(controllerData_);
   std::sort(c_data.begin(), c_data.end());
-  
 
-  assert(c_data.size() == s_data.size()); 
-  for(std::size_t i = 0; i < c_data.size(); i++){
-	  assert(c_data[i] == s_data[i]);
+  assert(c_data.size() == s_data.size());
+  for (std::size_t i = 0; i < c_data.size(); i++) {
+    assert(c_data[i] == s_data[i]);
   }
-  edm::LogAbsolute("MPI")<<"(CompareData::produce, (Stream = "<<sid_.value()<<", Event = "<<iEvent.id().event()<<") Data are Equal"; 
-
-
+  edm::LogAbsolute("MPI") << "(CompareData::produce, (Stream = " << sid_.value() << ", Event = " << iEvent.id().event()
+                          << ") Data are Equal";
 
   //****************** MPI END ******************
-
-
-
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void CompareData::beginStream(edm::StreamID stream) {
   // please remove this method if not needed
   sid_ = stream;
-  edm::LogAbsolute("MPI")<<"CompareData::beginStream (Stream = "<<sid_.value()<<".";
+  edm::LogAbsolute("MPI") << "CompareData::beginStream (Stream = " << sid_.value() << ".";
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------

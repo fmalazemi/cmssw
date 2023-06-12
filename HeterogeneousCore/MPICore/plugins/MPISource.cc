@@ -3,13 +3,9 @@
 #include <string>
 #include "mpi.h"
 
-
-
 #include <TBuffer.h>
 #include <TBufferFile.h>
 #include <TClass.h>
-
-
 
 #include "DataFormats/Provenance/interface/BranchListIndex.h"
 #include "DataFormats/Provenance/interface/EventAuxiliary.h"
@@ -35,8 +31,6 @@
 #include "HeterogeneousCore/MPIServices/interface/MPIService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "HeterogeneousCore/MPICore/interface/MPICommunicator.h"
-
-
 
 #include "api.h"
 #include "conversion.h"
@@ -71,36 +65,31 @@ private:
   std::shared_ptr<edm::RunAuxiliary> runAuxiliary_;
   std::shared_ptr<edm::LuminosityBlockAuxiliary> luminosityBlockAuxiliary_;
   //std::deque<edm::EventAuxiliary> eventAuxiliaries_;
-  struct EventData{
-	edm::EventAuxiliary eventAuxiliary;
-	int stream; 
-	int source;  
+  struct EventData {
+    edm::EventAuxiliary eventAuxiliary;
+    int stream;
+    int source;
   };
-  std::deque<EventData> events_; 
-
+  std::deque<EventData> events_;
 };
 
 MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescription const& desc)
-    : edm::PuttableSourceBase(config, desc), token_{produces()} 
-{
+    : edm::PuttableSourceBase(config, desc), token_{produces()} {
   edm::LogAbsolute log("MPI");
-  
+
   // FIXME move into the MPIService ?
   // make sure the EDM MPI types are available
   EDM_MPI_build_types();
-  
-  
+
   edm::Service<MPIService> service;
   service->required();
-  
-  communicator_.emplace("mpi_server"); //config.getUntrackedParameter<std::string>("service"));
-  communicator_->publish_and_listen();
-  communicator_->splitCommunicator(); 
-  
 
-  controlComm_ = communicator_->controlCommunicator(); 
+  communicator_.emplace("mpi_server");  //config.getUntrackedParameter<std::string>("service"));
+  communicator_->publish_and_listen();
+  communicator_->splitCommunicator();
+
+  controlComm_ = communicator_->controlCommunicator();
   link = MPISender(controlComm_, 0);
-  
 
   /* FIXME move MPIRecv
   // receive the branch descriptions
@@ -136,22 +125,23 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   }
   edm::LogAbsolute("MPI") << '\n';
   */
-  log<<"MPISource::MPISource is up.\n"; 
+  log << "MPISource::MPISource is up.\n";
 }
 
 MPISource::~MPISource() {
-  edm::LogAbsolute log("MPI"); 
-  log<<"MPISource::~MPISource()\n";
+  edm::LogAbsolute log("MPI");
+  log << "MPISource::~MPISource()\n";
 }
 
 MPISource::ItemType MPISource::getNextItemType() {
-
   edm::LogAbsolute log("MPI");
 
   MPI_Status status;
   MPI_Message message;
+  std::cout<<"Waiting to receive a message.\n"; 
   MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &message, &status);
-  
+  std::cout<<"Received a message\n"; 
+  //std::cin.ignore(); 
   switch (status.MPI_TAG) {
     // Connect message
     case EDM_MPI_Connect: {
@@ -159,7 +149,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
-      log<<"EDM_MPI_Connect (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<")."; 
+      log << "EDM_MPI_Connect (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").";
       // the Connect message is unexpected here (see above)
       return IsInvalid;
     }
@@ -169,7 +159,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
-      log<<"EDM_MPI_Disconnect (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_Disconnect (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       // signal the end of the input data
       return IsStop;
     }
@@ -179,21 +169,20 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
-      log<<"EDM_MPI_BeginStream (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_BeginStream (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       // nothing else to do
-      return getNextItemType();
+      return IsFile; //getNextItemType();
     }
 
     // EndStream message
     case EDM_MPI_EndStream: {
-
       // receive the message header
       EDM_MPI_Empty_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
 
-      log<<"EDM_MPI_EndStream (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_EndStream (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       // nothing else to do
-      return getNextItemType();
+      return IsSynchronize; //getNextItemType();
     }
 
     // BeginRun message
@@ -201,20 +190,20 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the RunAuxiliary
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
-      
-      log<<"EDM_MPI_BeginRun (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
-      
+
+      std::cout << "EDM_MPI_BeginRun (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
+
       runAuxiliary_ = std::make_shared<edm::RunAuxiliary>();
       edmFromBuffer(buffer, *runAuxiliary_);
 
       // receive the ProcessHistory
-      //MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
-      MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
+      MPI_Mprobe(status.MPI_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
+      //MPI_Mprobe(MPI_ANY_SOURCE, EDM_MPI_SendSerializedProduct, controlComm_, &message, &status);
       int size;
       MPI_Get_count(&status, MPI_BYTE, &size);
       TBufferFile blob{TBuffer::kRead, size};
       MPI_Mrecv(blob.Buffer(), size, MPI_BYTE, &message, &status);
-      log<<"EDM_MPI_SendSerializedProduct (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_SendSerializedProduct (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       history_.clear();
       TClass::GetClass(typeid(edm::ProcessHistory))->ReadBuffer(blob, &history_);
       history_.initializeTransients();
@@ -232,10 +221,9 @@ MPISource::ItemType MPISource::getNextItemType() {
       EDM_MPI_RunAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_RunAuxiliary, &message, &status);
 
-      log<<"EDM_MPI_EndRun (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log << "EDM_MPI_EndRun (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";     // nothing else to do
 
-      // nothing else to do
-      return getNextItemType();
+      return IsSynchronize; //getNextItemType();
     }
 
     // BeginLuminosityBlock message
@@ -247,7 +235,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       luminosityBlockAuxiliary_ = std::make_shared<edm::LuminosityBlockAuxiliary>();
       edmFromBuffer(buffer, *luminosityBlockAuxiliary_);
 
-      log<<"EDM_MPI_BeginLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_BeginLuminosityBlock (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       // signal a new lumisection
       return IsLumi;
     }
@@ -257,9 +245,9 @@ MPISource::ItemType MPISource::getNextItemType() {
       // receive the LuminosityBlockAuxiliary
       EDM_MPI_LuminosityBlockAuxiliary_t buffer;
       MPI_Mrecv(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, &message, &status);
-      log<<"EDM_MPI_EndLuminosityBlock (stream = "<< buffer.stream<<", source = "<<status.MPI_SOURCE<<").";
+      log<<"EDM_MPI_EndLuminosityBlock (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";
       // nothing else to do
-      return getNextItemType();
+      return IsSynchronize; //getNextItemType();
     }
 
     // ProcessEvent message
@@ -269,9 +257,6 @@ MPISource::ItemType MPISource::getNextItemType() {
       //event.eventProducts.reserve(productRegistryUpdate().size());
       //auto& event = eventAuxiliaries_.emplace_back();
 
-
-
-
       //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, MPI_STATUS_IGNORE);
       // receive the EventAuxiliary
       auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
@@ -279,9 +264,9 @@ MPISource::ItemType MPISource::getNextItemType() {
       //auto [status, stream] = link.receiveEvent(event, message);
       //int source = status.MPI_SOURCE;
       event.source = status.MPI_SOURCE;
-      event.stream = stream; 
+      event.stream = stream;
 
-      log<<"EDM_MPI_ProcessEvent (stream = "<< event.stream<<", source = "<<event.source<<").";
+      log <<"EDM_MPI_ProcessEvent (tagID = " << event.stream << ", source = " << event.source << ").\n";
 
       /* FIXME move MPIRecv
       //
@@ -364,7 +349,7 @@ MPISource::ItemType MPISource::getNextItemType() {
 
     // unexpected message
     default: {
-	log<<"MPISource::getNextItemType(): invalid tag.";
+      log << "MPISource::getNextItemType(): invalid tag.";
       return IsInvalid;
     }
   }
@@ -388,7 +373,7 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
                                     prov,
                                     nullptr,
                                     false);
-  
+
   edm::Event event(eventPrincipal, moduleDescription(), nullptr);
   event.setProducer(this, nullptr);
   event.emplace(token_, &communicator_.value(), events_.front().stream, events_.front().source);
@@ -403,7 +388,6 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
 
   events_.pop_front();
   //eventAuxiliaries_.pop_front();
-
 }
 
 void MPISource::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
