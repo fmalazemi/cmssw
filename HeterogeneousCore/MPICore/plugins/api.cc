@@ -98,7 +98,7 @@ void MPISender::sendEmpty_(int tag, int stream) {
   EDM_MPI_Empty_t buffer;
   buffer.messageTag = tag;
   buffer.stream = stream;
-  MPI_Send(&buffer, 1, EDM_MPI_Empty, dest_, tag, comm_);
+  MPI_Ssend(&buffer, 1, EDM_MPI_Empty, dest_, tag, comm_);
 }
 
 // fill and send an EDM_MPI_RunAuxiliary_t buffer
@@ -107,7 +107,7 @@ void MPISender::sendRunAuxiliary_(int tag, int stream, edm::RunAuxiliary const& 
   buffer.messageTag = tag;
   buffer.stream = stream;
   edmToBuffer_(buffer, aux);
-  MPI_Send(&buffer, 1, EDM_MPI_RunAuxiliary, dest_, tag, comm_);
+  MPI_Ssend(&buffer, 1, EDM_MPI_RunAuxiliary, dest_, tag, comm_);
 }
 
 // fill and send an EDM_MPI_RunAuxiliary_t buffer
@@ -116,7 +116,7 @@ void MPISender::sendLuminosityBlockAuxiliary_(int tag, int stream, edm::Luminosi
   buffer.messageTag = tag;
   buffer.stream = stream;
   edmToBuffer_(buffer, aux);
-  MPI_Send(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, dest_, tag, comm_);
+  MPI_Ssend(&buffer, 1, EDM_MPI_LuminosityBlockAuxiliary, dest_, tag, comm_);
 }
 
 // fill and send an EDM_MPI_EventAuxiliary_t buffer
@@ -125,7 +125,7 @@ void MPISender::sendEventAuxiliary_(int stream, edm::EventAuxiliary const& aux) 
   buffer.messageTag = EDM_MPI_ProcessEvent;
   buffer.stream = stream;
   edmToBuffer_(buffer, aux);
-  MPI_Send(&buffer, 1, EDM_MPI_EventAuxiliary, dest_, EDM_MPI_ProcessEvent, comm_);
+  MPI_Ssend(&buffer, 1, EDM_MPI_EventAuxiliary, dest_, EDM_MPI_ProcessEvent, comm_);
 }
 
 // receive an EDM_MPI_EventAuxiliary_t buffer and populate an edm::EventAuxiliary
@@ -150,5 +150,5 @@ std::tuple<MPI_Status, int> MPISender::receiveEventAuxiliary_(edm::EventAuxiliar
 void MPISender::sendSerializedProduct_(int stream, TClass const* type, void const* product) {
   TBufferFile buffer{TBuffer::kWrite};
   buffer.WriteClassBuffer(type, const_cast<void*>(product));
-  MPI_Send(buffer.Buffer(), buffer.Length(), MPI_BYTE, dest_, EDM_MPI_SendSerializedProduct, comm_);
+  MPI_Ssend(buffer.Buffer(), buffer.Length(), MPI_BYTE, dest_, EDM_MPI_SendSerializedProduct, comm_);
 }

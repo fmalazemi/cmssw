@@ -14,7 +14,9 @@ process.load('FWCore.MessageService.MessageLogger_cfi')
 process.MessageLogger.MPIService = dict()
 
 
-process.source = cms.Source('EmptySource')
+process.source = cms.Source('EmptySource', 
+         firstRun = cms.untracked.uint32(100),
+    numberEventsInRun = cms.untracked.uint32(2))
 
 
 #package or modules to load (we dont need for MPI 
@@ -43,7 +45,8 @@ process.process_path = cms.Path(cms.wait(process.generator+ process.sender + pro
 
 #process.output_path = cms.EndPath(process.output)
 
-process.maxEvents.input = 10 
+process.maxEvents.input =30 
 
-process.options.numberOfStreams = 1 
-process.options.numberOfThreads = 1 
+process.options.numberOfStreams = 30 
+process.options.numberOfThreads = 10 
+process.options.numberOfConcurrentRuns = 3

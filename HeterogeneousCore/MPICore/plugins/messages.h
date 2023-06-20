@@ -26,7 +26,9 @@ enum EDM_MPI_MessageTag {
   EDM_MPI_SendTrivialProduct,
   EDM_MPI_SkipProduct,
   EDM_MPI_SendComplete,
-  EDM_MPI_MessageTagCount_
+  EDM_MPI_MessageTagCount_, 
+  EDM_MPI_RunReadySignal,
+  EDM_MPI_RunReadyAck
 };
 
 extern MPI_Datatype EDM_MPI_MessageType[EDM_MPI_MessageTagCount_];

@@ -33,8 +33,18 @@
 
 #include "api.h"
 #include "messages.h"
+#include <atomic>
 
-class MPIController : public edm::stream::EDProducer<edm::GlobalCache<MPICommunicator>> {
+
+struct CountRun {
+   CountRun():value(0) {}
+   //Using mutable since we want to update the value.
+   mutable std::atomic<unsigned int> value;
+};
+
+
+
+class MPIController : public edm::stream::EDProducer<edm::GlobalCache<MPICommunicator>, edm::RunCache<CountRun>> {
 public:
   explicit MPIController(const edm::ParameterSet&, MPICommunicator const*);
   ~MPIController() override;
@@ -43,6 +53,12 @@ public:
   static std::unique_ptr<MPICommunicator> initializeGlobalCache(edm::ParameterSet const&);
   static void globalEndJob(MPICommunicator const* iMPICommunicator);
 
+static std::shared_ptr<CountRun> globalBeginRun(edm::Run const&, edm::EventSetup const&, GlobalCache const*) {
+       return std::shared_ptr<CountRun>(new CountRun());
+   }
+static void globalEndRun(edm::Run const& iRun, edm::EventSetup const&, RunContext const* iContext) {
+      std::cout <<"Number of events seen in Run "<<" = "<<iContext->run()->value<<std::endl;
+   }
 private:
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -95,11 +111,10 @@ MPIController::~MPIController() {
   //
   // please remove this method altogether if it would be left empty
   edm::LogAbsolute log("MPI");
-  std::cout<<"EndStream Disconnect? ";
-  std::cin.ignore();
+  std::cout<<":~MPIController:: Disconnect? ";
+//  std::cin.ignore();
 
   link.sendDisconnect(sid_.value());
-  log << "MPIController::~MPIController().";
 }
 
 //
@@ -130,7 +145,8 @@ std::unique_ptr<MPICommunicator> MPIController::initializeGlobalCache(edm::Param
 }
 
 void MPIController::globalEndJob(MPICommunicator const* MPICommPTR) {
-  edm::LogAbsolute("MPI") << "MPIController::globalEndJob";
+	edm::LogAbsolute log("MPI");
+	std::cout<<"MPIController::globalEndJob";
 }
 
 // ------------ method called to produce the data  ------------
@@ -180,17 +196,32 @@ void MPIController::endStream() {
   // signal the end stream
 
   link.sendEndStream(sid_.value());
-  // signal the disconnection
   edm::LogAbsolute("MPI") << "MPIController::endStream, stream = " << sid_.value() << ".";
 }
 
 // ------------ method called when starting to processes a run  ------------
 
 void MPIController::beginRun(edm::Run const& run, edm::EventSetup const& setup) {
+  
+
+  MPICommunicator const* MPICommPTR = globalCache(); 
+  
+
   edm::LogAbsolute log("MPI");
   auto aux = run.runAuxiliary();
   aux.setProcessHistoryID(run.processHistory().id());
-
+  int runID = aux.run();
+  
+  
+  std::cout<<"Run signal sent "<<runID<<"\n";   
+  link.sendRunReadySignal(runID);
+  
+  //wait for ack
+  MPI_Recv(NULL, 0, MPI_CHAR, 0, runID, MPICommPTR->controlCommunicator(), MPI_STATUS_IGNORE);  
+  std::cout<<"Run Ack Received "<<runID<<"\n";
+  
+  
+  
   link.sendBeginRun(sid_.value(), aux);
   log << "MPIController::beginRun. SentBeginRun,  ";
   //transmit the ProcessHistory

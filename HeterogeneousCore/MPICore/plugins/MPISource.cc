@@ -70,7 +70,10 @@ private:
     int stream;
     int source;
   };
-  std::deque<EventData> events_;
+  std::optional<EventData> event_;
+  int receivedEvents_ = 0; 
+  std::deque<int> nextRunID; 
+  bool runIsActive_ = false; 
 };
 
 MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescription const& desc)
@@ -138,8 +141,12 @@ MPISource::ItemType MPISource::getNextItemType() {
 
   MPI_Status status;
   MPI_Message message;
+  int flag; 
   std::cout<<"Waiting to receive a message.\n"; 
-  MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &message, &status);
+  MPI_Improbe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &flag, &message, &status);
+  if( ! flag) {
+	  return IsSynchronize; 
+  }
   std::cout<<"Received a message\n"; 
   //std::cin.ignore(); 
   switch (status.MPI_TAG) {
@@ -185,6 +192,23 @@ MPISource::ItemType MPISource::getNextItemType() {
       return IsSynchronize; //getNextItemType();
     }
 
+
+
+    // RunReadySignal message
+    case EDM_MPI_RunReadySignal: {
+	EDM_MPI_RunAuxiliary_t buffer;
+      MPI_Mrecv(&buffer, 1, EDM_MPI_Empty, &message, &status);
+      int runID = buffer.stream ; 
+      if(runIsActive_){
+	nextRunID.push_back(runID); 
+      }else{
+	runIsActive_ = true; 
+	MPI_Ssend(NULL, 0, MPI_CHAR, 0, runID, controlComm_); 
+      }
+
+	return IsSynchronize; 
+
+    }
     // BeginRun message
     case EDM_MPI_BeginRun: {
       // receive the RunAuxiliary
@@ -223,6 +247,18 @@ MPISource::ItemType MPISource::getNextItemType() {
 
       log << "EDM_MPI_EndRun (stream = " << buffer.stream << ", source = " << status.MPI_SOURCE << ").\n";     // nothing else to do
 
+      runIsActive_ = false ; 
+
+
+      if( ! nextRunID.empty()){
+	int runID = nextRunID.front(); 
+       	nextRunID.pop_front(); 
+	runIsActive_ = true; 
+//	link.sendRunReadyAck(runID); //FIXME: Should use RunID as a tag. 
+	MPI_Ssend(NULL, 0, MPI_CHAR, 0, runID, controlComm_); 
+
+      }
+
       return IsSynchronize; //getNextItemType();
     }
 
@@ -253,21 +289,24 @@ MPISource::ItemType MPISource::getNextItemType() {
     // ProcessEvent message
     case EDM_MPI_ProcessEvent: {
       // allocate a new event
-      auto& event = events_.emplace_back();
+      
+      //auto& event = events_.emplace_back();
       //event.eventProducts.reserve(productRegistryUpdate().size());
       //auto& event = eventAuxiliaries_.emplace_back();
 
-      //MPI_Recv(&x, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, MPI_STATUS_IGNORE);
       // receive the EventAuxiliary
-      auto [status, stream] = link.receiveEvent(event.eventAuxiliary, message);
-
+      // FIXME: create a new function for link.receiveEvent that returns status, stream, aux. 
+      EventData currentEvent; 
+      auto [status, stream] = link.receiveEvent(currentEvent.eventAuxiliary, message);
+      currentEvent.stream = stream ; 
+      currentEvent.source = status.MPI_SOURCE;       
       //auto [status, stream] = link.receiveEvent(event, message);
       //int source = status.MPI_SOURCE;
-      event.source = status.MPI_SOURCE;
-      event.stream = stream;
+      //event.source = status.MPI_SOURCE;
+      //event.stream = stream;
+      log <<"EDM_MPI_ProcessEvent (tagID = " << currentEvent.stream << ", source = " << currentEvent.source << ").\n";
 
-      log <<"EDM_MPI_ProcessEvent (tagID = " << event.stream << ", source = " << event.source << ").\n";
-
+      event_ = std::make_optional<EventData>(currentEvent); 
       /* FIXME move MPIRecv
       //
       MPI_Message message;
@@ -344,6 +383,7 @@ MPISource::ItemType MPISource::getNextItemType() {
       */
 
       // signal a new event
+      receivedEvents_ ++; 
       return IsEvent;
     }
 
@@ -361,9 +401,12 @@ std::shared_ptr<edm::LuminosityBlockAuxiliary> MPISource::readLuminosityBlockAux
   return luminosityBlockAuxiliary_;
 }
 
-void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
-  edm::LogAbsolute("MPI") << "number of buffered events: " << events_.size();
-  auto& aux = events_.front().eventAuxiliary;
+void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) { 
+  
+  assert(event_.has_value());  
+  edm::LogAbsolute("MPI") << "number of received events: " << receivedEvents_;
+  EventData& currentEvent = event_.value(); 
+  auto& aux = currentEvent.eventAuxiliary;
   edm::ProductProvenanceRetriever prov(eventPrincipal.transitionIndex(), *productRegistry());
   eventPrincipal.fillEventPrincipal(aux,
                                     &history_,
@@ -376,7 +419,7 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
 
   edm::Event event(eventPrincipal, moduleDescription(), nullptr);
   event.setProducer(this, nullptr);
-  event.emplace(token_, &communicator_.value(), events_.front().stream, events_.front().source);
+  event.emplace(token_, &communicator_.value(), currentEvent.stream, currentEvent.source);
   commit_(event);
 
   /* FIXME move MPIRecv ?
@@ -386,7 +429,6 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
   }
   */
 
-  events_.pop_front();
   //eventAuxiliaries_.pop_front();
 }
 

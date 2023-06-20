@@ -34,6 +34,8 @@ public:
   // signal a new run, and transmit the RunAuxiliary
   void sendBeginRun(int stream, edm::RunAuxiliary const& aux) { sendRunAuxiliary_(EDM_MPI_BeginRun, stream, aux); }
 
+  void sendRunReadySignal(int runID) { sendEmpty_(EDM_MPI_RunReadySignal, runID); }
+  void sendRunReadyAck(int runID){ sendEmpty_(EDM_MPI_RunReadyAck, runID); }
   // signal the end of run, and re-transmit the RunAuxiliary
   void sendEndRun(int stream, edm::RunAuxiliary const& aux) { sendRunAuxiliary_(EDM_MPI_EndRun, stream, aux); }
 
