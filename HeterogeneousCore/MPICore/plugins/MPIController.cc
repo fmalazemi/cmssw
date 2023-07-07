@@ -44,6 +44,7 @@ struct CountRun {
 
 
 
+
 class MPIController : public edm::stream::EDProducer<edm::GlobalCache<MPICommunicator>, edm::RunCache<CountRun>> {
 public:
   explicit MPIController(const edm::ParameterSet&, MPICommunicator const*);
@@ -71,11 +72,11 @@ private:
 
   // ----------member data ---------------------------
   edm::StreamID sid_ = edm::StreamID::invalidStreamID();
-  MPISender link;
   edm::EDPutTokenT<MPIToken> token_;
+  static MPISender link; //FIXME: Add it as part of MPIcommunicator
   int MPISourceRank_;
 };
-
+MPISender MPIController::link = nullptr;
 //
 // constants, enums and typedefs
 //
@@ -101,7 +102,6 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   //now do what ever other initialization is needed
   edm::LogAbsolute log("MPI");
 
-  link = MPISender(MPICommPTR->controlCommunicator(), MPISourceRank_);
   log << "MPIController::MPIController is up. Link to MPISource " << MPISourceRank_ << " is Set.";
 }
 
@@ -114,7 +114,6 @@ MPIController::~MPIController() {
   std::cout<<":~MPIController:: Disconnect? ";
 //  std::cin.ignore();
 
-  link.sendDisconnect(sid_.value());
 }
 
 //
@@ -132,21 +131,17 @@ std::unique_ptr<MPICommunicator> MPIController::initializeGlobalCache(edm::Param
 
   MPICommPTR->connect();
   MPICommPTR->splitCommunicator();
+  
+  link = MPISender(MPICommPTR->controlCommunicator(), 0);
 
-  auto [mainRank, mainSize] = MPICommPTR->rankAndSize(MPICommPTR->mainCommunicator());
-  auto [contRank, contSize] = MPICommPTR->rankAndSize(MPICommPTR->controlCommunicator());
-  auto [dataRank, dataSize] = MPICommPTR->rankAndSize(MPICommPTR->dataCommunicator());
-
-  log << "MPIController::initializeGlobalCache. Connected to MPISource (Main rank=" << mainRank << ", size=" << mainSize
-      << ", Controller rank=" << contRank << ", size=" << contSize << ", Data rank=" << dataRank
-      << ", size=" << dataSize << ")";
-  //FIXME: set MPI Source and Rank here;
   return MPICommPTR;
 }
 
 void MPIController::globalEndJob(MPICommunicator const* MPICommPTR) {
 	edm::LogAbsolute log("MPI");
 	std::cout<<"MPIController::globalEndJob";
+	
+  link.sendDisconnect(0);
 }
 
 // ------------ method called to produce the data  ------------
