@@ -1,6 +1,0 @@
-<lcgdict>
-
-  <class name="MPIToken" persistent="false"/>
-  <class name="edm::Wrapper<MPIToken>" persistent="false"/>
-</lcgdict>
-
