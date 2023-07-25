@@ -61,7 +61,7 @@ public:
 private:
   edm::StreamID sid_ = edm::StreamID::invalidStreamID();
 
-  MPISender sender_;
+  MPIControlLink sender_;
   MPI_Comm comm_ = MPI_COMM_NULL;
 
   /* FIXME move to MPISend ?
@@ -99,7 +99,7 @@ MPIDriver::MPIDriver(edm::ParameterSet const& config)
     throw cms::Exception("UnsupportedFeature")
         << "MPIDriver supports only a single follower, but it was connected to " << size << " followers";
   }
-  sender_ = MPISender(comm_, 0);
+  sender_ = MPIControlLink(comm_, 0);
 
   /* FIXME move to MPISend ?
   // register a dependency on all the event products described by the "eventProducts"

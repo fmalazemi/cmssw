@@ -14,11 +14,12 @@
 // local headers
 #include "messages.h"
 
-class MPISender {
+class MPIControlLink {
 public:
-  MPISender() = default;
-  MPISender(MPI_Comm comm, int destination) : comm_(comm), dest_(destination) {}
+  MPIControlLink() = default;
+  MPIControlLink(MPI_Comm comm, int destination) : comm_(comm), dest_(destination) {}
 
+  void setCommunicator(MPI_Comm comm){ comm_ = comm; }; 
   // announce that a client has just connected
   void sendConnect(int stream) { sendEmpty_(EDM_MPI_Connect, stream); }
 

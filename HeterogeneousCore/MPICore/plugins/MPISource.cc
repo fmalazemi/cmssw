@@ -53,7 +53,7 @@ private:
 
   char port_[MPI_MAX_PORT_NAME];
   MPI_Comm controlComm_ = MPI_COMM_NULL;
-  MPISender link;
+  MPIControlLink link; //no need for static MPIControlLink as we have only one instance of MPISource
 
   edm::ProcessHistory history_;
   /* FIXME replace with a data product that keeps track of the MPIDriver origin
@@ -92,7 +92,7 @@ MPISource::MPISource(edm::ParameterSet const& config, edm::InputSourceDescriptio
   communicator_->splitCommunicator();
 
   controlComm_ = communicator_->controlCommunicator();
-  link = MPISender(controlComm_, 0);
+  link = MPIControlLink(controlComm_, 0);
 
   /* FIXME move MPIRecv
   // receive the branch descriptions

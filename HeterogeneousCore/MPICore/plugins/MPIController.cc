@@ -42,7 +42,11 @@ struct CountRun {
    mutable std::atomic<unsigned int> value;
 };
 
-
+struct MPICommTools{
+	MPICommunicator main; 
+	MPIControlLink link;
+	MPI_Comm const dataComm(){ return main.dataCommunicator(); } 
+};
 
 
 class MPIController : public edm::stream::EDProducer<edm::GlobalCache<MPICommunicator>, edm::RunCache<CountRun>> {
@@ -73,10 +77,12 @@ private:
   // ----------member data ---------------------------
   edm::StreamID sid_ = edm::StreamID::invalidStreamID();
   edm::EDPutTokenT<MPIToken> token_;
-  static MPISender link; //FIXME: Add it as part of MPIcommunicator
-  int MPISourceRank_;
+  static MPIControlLink link; //One instance is required among all objects
 };
-MPISender MPIController::link = nullptr;
+
+MPIControlLink MPIController::link; 
+
+
 //
 // constants, enums and typedefs
 //
@@ -102,7 +108,7 @@ MPIController::MPIController(const edm::ParameterSet& iConfig, MPICommunicator c
   //now do what ever other initialization is needed
   edm::LogAbsolute log("MPI");
 
-  log << "MPIController::MPIController is up. Link to MPISource " << MPISourceRank_ << " is Set.";
+  log << "MPIController::MPIController is up. Link to MPISource is Set.";
 }
 
 MPIController::~MPIController() {
@@ -111,9 +117,7 @@ MPIController::~MPIController() {
   //
   // please remove this method altogether if it would be left empty
   edm::LogAbsolute log("MPI");
-  std::cout<<":~MPIController:: Disconnect? ";
-//  std::cin.ignore();
-
+  std::cout<<"~MPIController";
 }
 
 //
@@ -132,16 +136,15 @@ std::unique_ptr<MPICommunicator> MPIController::initializeGlobalCache(edm::Param
   MPICommPTR->connect();
   MPICommPTR->splitCommunicator();
   
-  link = MPISender(MPICommPTR->controlCommunicator(), 0);
 
+  link.setCommunicator(MPICommPTR->controlCommunicator());
   return MPICommPTR;
 }
 
 void MPIController::globalEndJob(MPICommunicator const* MPICommPTR) {
 	edm::LogAbsolute log("MPI");
 	std::cout<<"MPIController::globalEndJob";
-	
-  link.sendDisconnect(0);
+	link.sendDisconnect(0); 	
 }
 
 // ------------ method called to produce the data  ------------

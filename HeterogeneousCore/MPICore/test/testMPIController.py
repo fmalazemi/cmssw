@@ -47,6 +47,6 @@ process.process_path = cms.Path(cms.wait(process.generator+ process.sender + pro
 
 process.maxEvents.input =30 
 
-process.options.numberOfStreams = 30 
-process.options.numberOfThreads = 10 
-process.options.numberOfConcurrentRuns = 3
+process.options.numberOfStreams = 1 
+process.options.numberOfThreads = 1 
+process.options.numberOfConcurrentRuns = 1

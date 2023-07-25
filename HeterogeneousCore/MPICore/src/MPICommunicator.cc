@@ -10,16 +10,20 @@ MPICommunicator::MPICommunicator(std::string serviceName) : serviceName_{std::mo
   edm::LogAbsolute("MPI") << "MPICommunicator::MPICommunicator() is UP.";
 }
 
-MPICommunicator::~MPICommunicator() {
+MPICommunicator::~MPICommunicator(){}; 
+
+
+
+void MPICommunicator::disconnect() {
+  MPI_Comm_disconnect(&controlComm_); 
+  MPI_Comm_disconnect(&dataComm_); 
   MPI_Comm_disconnect(&mainComm_);
   MPI_Info port_info;
   MPI_Info_create(&port_info);
-  //MPI_Info_set(port_info, "ompi_global_scope", "true");
-  //MPI_Info_set(port_info, "ompi_unique", "true");
   MPI_Unpublish_name(serviceName_.c_str(), port_info, port_);
   MPI_Close_port(port_);
 
-  edm::LogAbsolute("MPI") << "MPICommunicator::~MPICommunicator()";
+  edm::LogAbsolute("MPI") << "MPICommunicator::disconnect()";
 }
 
 void MPICommunicator::connect() {
@@ -73,9 +77,3 @@ std::tuple<int, int> MPICommunicator::rankAndSize(MPI_Comm comm) const {
   MPI_Comm_rank(comm, &rank);
   return std::make_tuple(rank, size);
 }
-
-MPI_Comm MPICommunicator::mainCommunicator() const { return mainComm_; }
-
-MPI_Comm MPICommunicator::dataCommunicator() const { return dataComm_; }
-
-MPI_Comm MPICommunicator::controlCommunicator() const { return controlComm_; }

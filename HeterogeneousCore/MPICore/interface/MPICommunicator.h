@@ -6,6 +6,8 @@
 #include <map>
 #include <cassert>
 
+
+
 class MPICommunicator {
 public:
   MPICommunicator(std::string serviceName);
@@ -16,10 +18,11 @@ public:
   void publish_and_listen();
   void connect();
   void splitCommunicator();
+  void disconnect(); 
 
-  MPI_Comm mainCommunicator() const;
-  MPI_Comm controlCommunicator() const;
-  MPI_Comm dataCommunicator() const;
+  MPI_Comm mainCommunicator() const { return mainComm_; } ;
+  MPI_Comm controlCommunicator() const { return controlComm_;} ;
+  MPI_Comm dataCommunicator() const { return dataComm_; }; 
   std::tuple<int, int> rankAndSize(MPI_Comm) const;
 
 private:

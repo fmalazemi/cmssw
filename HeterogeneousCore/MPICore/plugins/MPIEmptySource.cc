@@ -56,7 +56,7 @@ private:
 
   // ----------member data ---------------------------
   edm::StreamID sid_ = edm::StreamID::invalidStreamID();
-  MPISender link;
+  MPIControlLink link;
   edm::EDPutTokenT<MPIToken> token_;
   int MPISourceRank_;
   MPI_Comm controlComm_ = MPI_COMM_NULL;
@@ -88,7 +88,7 @@ MPIEmptySource::MPIEmptySource(const edm::ParameterSet& iConfig, MPICommunicator
   //now do what ever other initialization is needed
   edm::LogAbsolute log("MPI");
   controlComm_ = MPICommPTR->controlCommunicator();
-  link = MPISender(MPICommPTR->controlCommunicator(), MPISourceRank_);
+  link = MPIControlLink(MPICommPTR->controlCommunicator(), MPISourceRank_);
   log << "MPIEmptySource::MPIEmptySource is up. Link to MPISource " << MPISourceRank_ << " is Set.";
 }
 
