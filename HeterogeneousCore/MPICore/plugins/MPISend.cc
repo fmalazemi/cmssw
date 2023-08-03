@@ -138,11 +138,11 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   MPIToken tokenData = iEvent.get(communicatorToken_);
 
-  const MPICommunicator* MPICommPTR = tokenData.token;  //replace with a better name
+  const MPICommunicator* MPICommPTR = tokenData.token_;  //replace with a better name
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
 
-  int tagID = tokenData.stream;  //replace with a better name
-  int dest = tokenData.source;   //replace with a better name
+  int tagID = tokenData.tagID_;  //replace with a better name
+  int dest = tokenData.source_;   //replace with a better name
 
   std::vector<int> data = iEvent.get(inData_);
 

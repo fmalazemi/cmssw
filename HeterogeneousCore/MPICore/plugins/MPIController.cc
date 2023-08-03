@@ -173,7 +173,7 @@ void MPIController::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   link.sendEvent(tagID, iEvent.eventAuxiliary());
 
   log << "MPIController::produce. Starting Event " << iEvent.id().event() << " on Stream " << sid_.value();
-  iEvent.emplace(token_, MPICommPTR, tagID, 0);
+  iEvent.emplace(token_, MPICommPTR, tagID, 0); 
 
 }
 

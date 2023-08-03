@@ -121,11 +121,11 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   MPIToken tokenData = iEvent.get(communicatorToken_);
 
-  const MPICommunicator* MPICommPTR = tokenData.token;
+  const MPICommunicator* MPICommPTR = tokenData.token_;
   MPI_Comm dataComm_ = MPICommPTR->dataCommunicator();
 
-  int tagID = tokenData.stream;
-  int source = tokenData.source;
+  int tagID = tokenData.tagID_;
+  int source = tokenData.source_;
 
   log << "MPIRecv::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
       << ") waiting for Data";

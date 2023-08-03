@@ -36,11 +36,11 @@ private:
 class MPIToken {
 public:
   MPIToken() = default;
-  MPIToken(MPICommunicator const* t) : token(t){};
-  MPIToken(MPICommunicator const* t, int stream_, int source_) : token(t), stream(stream_), source(source_){};
-  MPICommunicator const* token;
-  int stream;
-  int source;
+  MPIToken(MPICommunicator const* t) : token_(t){};
+  MPIToken(MPICommunicator const* t, int tagID, int source) : token_(t), tagID_(tagID), source_(source){};
+  MPICommunicator const* token_;
+  int tagID_;
+  int source_; 
 };
 
 #endif
