@@ -67,7 +67,7 @@ private:
   //std::deque<edm::EventAuxiliary> eventAuxiliaries_;
   struct EventData {
     edm::EventAuxiliary eventAuxiliary;
-    int stream;
+    int tagID;
     int source;
   };
   std::optional<EventData> event_;
@@ -298,13 +298,13 @@ MPISource::ItemType MPISource::getNextItemType() {
       // FIXME: create a new function for link.receiveEvent that returns status, stream, aux. 
       EventData currentEvent; 
       auto [status, stream] = link.receiveEvent(currentEvent.eventAuxiliary, message);
-      currentEvent.stream = stream ; 
+      currentEvent.tagID = stream ; 
       currentEvent.source = status.MPI_SOURCE;       
       //auto [status, stream] = link.receiveEvent(event, message);
       //int source = status.MPI_SOURCE;
       //event.source = status.MPI_SOURCE;
       //event.stream = stream;
-      log <<"EDM_MPI_ProcessEvent (tagID = " << currentEvent.stream << ", source = " << currentEvent.source << ").\n";
+      log <<"EDM_MPI_ProcessEvent (tagID = " << currentEvent.tagID << ", source = " << currentEvent.source << ").\n";
 
       event_ = std::make_optional<EventData>(currentEvent); 
       /* FIXME move MPIRecv
@@ -419,7 +419,7 @@ void MPISource::readEvent_(edm::EventPrincipal& eventPrincipal) {
 
   edm::Event event(eventPrincipal, moduleDescription(), nullptr);
   event.setProducer(this, nullptr);
-  event.emplace(token_, &communicator_.value(), currentEvent.stream, currentEvent.source);
+  event.emplace(token_, &communicator_.value(), currentEvent.tagID, currentEvent.source);
   commit_(event);
 
   /* FIXME move MPIRecv ?

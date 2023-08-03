@@ -127,9 +127,6 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   int tagID = tokenData.tagID_;
   int source = tokenData.source_;
 
-  log << "MPIRecv::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
-      << ") waiting for Data";
-
   MPI_Status status;
   MPI_Message message;
 
@@ -143,20 +140,12 @@ void MPIRecv::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   MPI_Mrecv(&data[0], dataSize, MPI_INT, &message, &status);
 
-  std::stringstream ss;
-  for (int i : data) {
-    ss << i << " ";
-  }
-  log << "MPIRecv::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
-      << ") Received data from Source = " << source << " (size = " << data.size() << ") = " << ss.str();
-
   iEvent.emplace(outData_, data);
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void MPIRecv::beginStream(edm::StreamID stream) {
   sid_ = stream;
-  edm::LogAbsolute("MPI") << "MPIRecv::beginStream (Stream " << sid_.value() << ").";
   // please remove this method if not needed
 }
 

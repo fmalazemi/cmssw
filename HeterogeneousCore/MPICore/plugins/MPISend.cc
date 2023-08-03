@@ -146,15 +146,7 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   std::vector<int> data = iEvent.get(inData_);
 
-  std::stringstream ss;
-  for (int i : data) {
-    ss << i << " ";
-  }
-  log << "MPISend::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
-      << ")  Data = " << ss.str() << "\n";
   MPI_Send(&data[0], (int)data.size(), MPI_INT, dest, tagID, dataComm_);
-  log << "MPISend::produce (sid_ = " << sid_.value() << ", tagID = " << tagID << ", Event = " << iEvent.id().event()
-      << ") Sent Data to " << dest;
 
   iEvent.emplace(comOut_, tokenData);
 }
