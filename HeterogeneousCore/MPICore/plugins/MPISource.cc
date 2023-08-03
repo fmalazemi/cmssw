@@ -143,10 +143,11 @@ MPISource::ItemType MPISource::getNextItemType() {
   MPI_Message message;
   int flag; 
   std::cout<<"Waiting to receive a message.\n"; 
-  MPI_Improbe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &flag, &message, &status);
+  /*MPI_Improbe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &flag, &message, &status);
   if( ! flag) {
 	  return IsSynchronize; 
-  }
+  }*/
+  MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, controlComm_, &message, &status);
   std::cout<<"Received a message\n"; 
   //std::cin.ignore(); 
   switch (status.MPI_TAG) {
