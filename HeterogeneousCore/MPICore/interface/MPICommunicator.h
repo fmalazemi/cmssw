@@ -7,8 +7,9 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
-
+#include <atomic>
 class MPICommunicator {
+	//May be we can move tags generation here in the future. 
 public:
   MPICommunicator(std::string);
 

@@ -124,25 +124,17 @@ void MPISend::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   edm::LogAbsolute log("MPI");
 
-  MPIToken tokenData = iEvent.get(communicatorToken_);
-
-  const MPICommunicator* MPICommPTR = tokenData.token_;  //replace with a better name
+  MPIToken mpiCommToken = iEvent.get(communicatorToken_);
+  const MPICommunicator* MPICommPTR = mpiCommToken.token_;  //replace with a better name
   MPI_Comm dataComm_ = MPICommPTR->Communicator();
-
-  int tagID = iEvent.get(tagIDToken_) + userTagID_;  
  
+  int tagID = iEvent.get(tagIDToken_) + userTagID_;  
   
   int intData = iEvent.get(intToken_);
-  std::cout<<"Stream "<<sid_.value()<<" Sent Data using tagID = "<<tagID<<".\n"; 
-
   MPI_Send(&intData, 1, MPI_INT, 0, tagID, dataComm_); 
-
-  //std::cout<<"- - - - - - Sent Data = "<<data<<" - - - - - - - -"<<std::endl;
 
   std::vector<int> vectorData = iEvent.get(vectorToken_); 
   vectorData.shrink_to_fit();
-
- // MPI_Send(&vectorData[0], vectorData.size(), MPI_INT, 0, tagID+1, dataComm_);  
 
   TBufferFile send_buffer(TBuffer::kWrite);
   TClass* type = TClass::GetClass(typeid(std::vector<int>));
